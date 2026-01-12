@@ -9,14 +9,14 @@ import java.util.List;
 @RequestMapping("/api/v1/lookup")
 public class ProductLookupController {
 
-  private final ProductLookupJdbcRepository repo;
+    private final ProductLookupJdbcRepository repo;
 
-  public ProductLookupController(ProductLookupJdbcRepository repo) {
-    this.repo = repo;
-  }
+    public ProductLookupController(ProductLookupJdbcRepository repo) {
+        this.repo = repo;
+    }
 
-  @GetMapping("/products")
-  public List<ProductLookupJdbcRepository.Item> products(@RequestParam(name = "q", required = false) String q) {
-    return repo.search(q, 20);
-  }
+    @GetMapping("/products")
+    public List<ProductLookupJdbcRepository.Item> products(@RequestParam(name = "q", required = false) String q) {
+        return repo.search(q, 20);
+    }
 }
