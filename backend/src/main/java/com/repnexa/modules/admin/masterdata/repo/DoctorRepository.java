@@ -8,11 +8,11 @@ import java.util.List;
 
 public interface DoctorRepository extends JpaRepository<Doctor, Long> {
 
-  @Query("""
-          SELECT d FROM Doctor d
-          WHERE d.deletedAt IS NULL
-            AND (:q IS NULL OR :q = '' OR LOWER(d.name) LIKE CONCAT(LOWER(:q), '%'))
-          ORDER BY d.name
-      """)
-  List<Doctor> searchActiveByNamePrefix(String q);
+    @Query("""
+        SELECT d FROM Doctor d
+        WHERE d.deletedAt IS NULL
+          AND (:q IS NULL OR :q = '' OR LOWER(d.name) LIKE CONCAT(LOWER(:q), '%'))
+        ORDER BY d.name
+    """)
+    List<Doctor> searchActiveByNamePrefix(String q);
 }
