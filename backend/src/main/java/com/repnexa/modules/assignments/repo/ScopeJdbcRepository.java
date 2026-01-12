@@ -145,17 +145,19 @@ public class ScopeJdbcRepository {
         return requested;
     }
 
-    public int countOverlappingAssignments(long repUserId, long routeId, java.time.LocalDate newStart, java.time.LocalDate newEnd, Long excludeId) {
+    public int countOverlappingAssignments(long repUserId, long routeId,
+                                        java.time.LocalDate newStart,
+                                        java.time.LocalDate newEnd,
+                                        Long excludeId) {
         // overlap if existing end is null or >= newStart AND (newEnd is null OR existing start <= newEnd)
         Integer cnt = jdbc.queryForObject("""
             SELECT COUNT(*)
             FROM rep_route_assignments a
             WHERE a.rep_user_id = ?
-              AND a.route_id = ?
-              AND a.enabled = TRUE
-              AND ( ? IS NULL OR a.id <> ? )
-              AND (a.end_date IS NULL OR a.end_date >= ?)
-              AND (? IS NULL OR a.start_date <= ?)
+            AND a.route_id = ?
+            AND ( ?::bigint IS NULL OR a.id <> ?::bigint )
+            AND (a.end_date IS NULL OR a.end_date >= ?)
+            AND ( ?::date IS NULL OR a.start_date <= ?::date )
         """, Integer.class,
                 repUserId, routeId,
                 excludeId, excludeId,
@@ -164,4 +166,5 @@ public class ScopeJdbcRepository {
         );
         return cnt == null ? 0 : cnt;
     }
+
 }

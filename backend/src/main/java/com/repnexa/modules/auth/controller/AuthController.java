@@ -8,8 +8,11 @@ import com.repnexa.modules.meta.dto.MeResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -26,9 +29,14 @@ public class AuthController {
         return new CsrfResponse(token.getToken());
     }
 
-    @PostMapping("/login")
-    public MeResponse login(@Valid @RequestBody LoginRequest req) {
-        return auth.login(req.username(), req.password());
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public MeResponse login(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        // Ensure an HTTP session exists so auth can persist for /me
+        request.getSession(true);
+
+        String username = body.get("username");
+        String password = body.get("password");
+        return auth.login(username, password);
     }
 
     @PostMapping("/logout")
