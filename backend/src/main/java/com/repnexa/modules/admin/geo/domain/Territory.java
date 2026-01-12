@@ -8,74 +8,48 @@ import java.time.OffsetDateTime;
 @Table(name = "territories")
 public class Territory {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(nullable = false, unique = true, length = 30)
-  private String code;
+    @Column(nullable = false, unique = true, length = 30)
+    private String code;
 
-  @Column(nullable = false, length = 120)
-  private String name;
+    @Column(nullable = false, length = 120)
+    private String name;
 
-  @Column(name = "owner_user_id")
-  private Long ownerUserId;
+    @Column(name = "owner_user_id")
+    private Long ownerUserId;
 
-  @Column(name = "deleted_at")
-  private OffsetDateTime deletedAt;
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
 
-  @Column(name = "created_at", nullable = false)
-  private OffsetDateTime createdAt;
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
-  @Column(name = "updated_at", nullable = false)
-  private OffsetDateTime updatedAt;
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
-  @PrePersist
-  void prePersist() {
-    OffsetDateTime now = OffsetDateTime.now();
-    if (createdAt == null)
-      createdAt = now;
-    updatedAt = now;
-  }
+    @PrePersist
+    void prePersist() {
+        OffsetDateTime now = OffsetDateTime.now();
+        if (createdAt == null) createdAt = now;
+        updatedAt = now;
+    }
 
-  @PreUpdate
-  void preUpdate() {
-    updatedAt = OffsetDateTime.now();
-  }
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() { return id; }
+    public String getCode() { return code; }
+    public String getName() { return name; }
+    public Long getOwnerUserId() { return ownerUserId; }
+    public OffsetDateTime getDeletedAt() { return deletedAt; }
 
-  public String getCode() {
-    return code;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public Long getOwnerUserId() {
-    return ownerUserId;
-  }
-
-  public OffsetDateTime getDeletedAt() {
-    return deletedAt;
-  }
-
-  public void setCode(String code) {
-    this.code = code;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public void setOwnerUserId(Long ownerUserId) {
-    this.ownerUserId = ownerUserId;
-  }
-
-  public void softDeleteNow() {
-    this.deletedAt = OffsetDateTime.now();
-  }
+    public void setCode(String code) { this.code = code; }
+    public void setName(String name) { this.name = name; }
+    public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+    public void softDeleteNow() { this.deletedAt = OffsetDateTime.now(); }
 }
