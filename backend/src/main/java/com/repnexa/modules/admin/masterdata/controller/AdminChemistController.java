@@ -10,24 +10,24 @@ import java.util.List;
 @RequestMapping("/api/v1/admin/chemists")
 public class AdminChemistController {
 
-  private final AdminChemistService svc;
+    private final AdminChemistService svc;
 
-  public AdminChemistController(AdminChemistService svc) {
-    this.svc = svc;
-  }
+    public AdminChemistController(AdminChemistService svc) {
+        this.svc = svc;
+    }
 
-  @GetMapping
-  public List<ChemistDtos.ChemistResponse> list(@RequestParam(name = "q", required = false) String q) {
-    return svc.list(q);
-  }
+    @GetMapping
+    public List<ChemistDtos.ChemistResponse> list(@RequestParam(name = "q", required = false) String q) {
+        return svc.list(q);
+    }
 
-  @PostMapping
-  public ChemistDtos.ChemistResponse create(@RequestBody ChemistDtos.CreateChemistRequest req) {
-    return svc.create(req);
-  }
+    @PostMapping
+    public ChemistDtos.ChemistResponse create(@RequestBody ChemistDtos.CreateChemistRequest req) {
+        return svc.create(req);
+    }
 
-  @PatchMapping("/{id}")
-  public ChemistDtos.ChemistResponse patch(@PathVariable long id, @RequestBody ChemistDtos.PatchChemistRequest req) {
-    return svc.patch(id, req);
-  }
+    @PatchMapping("/{id}")
+    public ChemistDtos.ChemistResponse patch(@PathVariable long id, @RequestBody ChemistDtos.PatchChemistRequest req) {
+        return svc.patch(id, req);
+    }
 }
