@@ -10,25 +10,24 @@ import java.util.List;
 @RequestMapping("/api/v1/admin/territories")
 public class AdminTerritoryController {
 
-  private final AdminGeoService geo;
+    private final AdminGeoService geo;
 
-  public AdminTerritoryController(AdminGeoService geo) {
-    this.geo = geo;
-  }
+    public AdminTerritoryController(AdminGeoService geo) {
+        this.geo = geo;
+    }
 
-  @GetMapping
-  public List<TerritoryDtos.TerritoryResponse> list() {
-    return geo.listTerritories();
-  }
+    @GetMapping
+    public List<TerritoryDtos.TerritoryResponse> list() {
+        return geo.listTerritories();
+    }
 
-  @PostMapping
-  public TerritoryDtos.TerritoryResponse create(@RequestBody TerritoryDtos.CreateTerritoryRequest req) {
-    return geo.createTerritory(req);
-  }
+    @PostMapping
+    public TerritoryDtos.TerritoryResponse create(@RequestBody TerritoryDtos.CreateTerritoryRequest req) {
+        return geo.createTerritory(req);
+    }
 
-  @PatchMapping("/{id}")
-  public TerritoryDtos.TerritoryResponse patch(@PathVariable Long id,
-      @RequestBody TerritoryDtos.PatchTerritoryRequest req) {
-    return geo.patchTerritory(id, req);
-  }
+    @PatchMapping("/{id}")
+    public TerritoryDtos.TerritoryResponse patch(@PathVariable Long id, @RequestBody TerritoryDtos.PatchTerritoryRequest req) {
+        return geo.patchTerritory(id, req);
+    }
 }
