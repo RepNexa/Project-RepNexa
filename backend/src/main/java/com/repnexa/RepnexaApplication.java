@@ -5,9 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class RepnexaApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(RepnexaApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(RepnexaApplication.class, args);
+    }
 }
