@@ -1,0 +1,26 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: ${REPNEXA_SESSION_COOKIE_SECURE:false}
+        same-site: LAX
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/repnexa
+    username: repnexa
+    password: repnexa
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
