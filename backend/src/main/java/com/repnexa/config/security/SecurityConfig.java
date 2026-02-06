@@ -2,9 +2,12 @@ package com.repnexa.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repnexa.common.api.ApiErrorWriter;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -45,11 +48,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, Environment env) throws Exception {
         CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepo.setCookieName("XSRF-TOKEN");
         csrfRepo.setHeaderName("X-CSRF-Token");
         csrfRepo.setCookiePath("/");
+
+        boolean dev = env.acceptsProfiles(Profiles.of("dev"));
 
         http
             .csrf(csrf -> csrf.csrfTokenRepository(csrfRepo))
@@ -61,32 +66,39 @@ public class SecurityConfig {
                     .authenticationEntryPoint(restAuthEntryPoint(mapper))
                     .accessDeniedHandler(restAccessDeniedHandler(mapper))
             )
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/v1/auth/csrf").permitAll()
-                    .requestMatchers("/api/v1/auth/login").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+            .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers("/api/v1/auth/csrf").permitAll();
+                   auth.requestMatchers("/api/v1/auth/login").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll();
 
-                    .requestMatchers("/api/v1/me").authenticated()
-                    .requestMatchers("/api/v1/auth/logout").authenticated()
-                    .requestMatchers("/api/v1/auth/change-password").authenticated()
+                    if (dev) {
+                        auth.requestMatchers("/actuator", "/actuator/**").hasRole("CM");
+                    }
+
+                    auth.requestMatchers("/api/v1/me").authenticated();
+                    auth.requestMatchers("/api/v1/auth/logout").authenticated();
+                    auth.requestMatchers("/api/v1/auth/change-password").authenticated();
 
                     // CM-only admin geo
-                    .requestMatchers("/api/v1/admin/**").hasRole("CM")
+                    auth.requestMatchers("/api/v1/admin/**").hasRole("CM");
 
                     // Lookups: authenticated (CM/FM/MR)
-                    .requestMatchers("/api/v1/lookup/**").authenticated()
+                    auth.requestMatchers("/api/v1/lookup/**").authenticated();
 
                     // Doctor-route assignments are CM-only (override broader assignments rule)
-                    .requestMatchers("/api/v1/assignments/doctor-routes").hasRole("CM")
+                    auth.requestMatchers(
+                            "/api/v1/assignments/doctor-routes",
+                            "/api/v1/assignments/doctor-routes/**"
+                    ).hasRole("CM");
 
                     // Assignments: CM or FM
-                    .requestMatchers("/api/v1/assignments/**").hasAnyRole("CM", "FM")
+                    auth.requestMatchers("/api/v1/assignments/**").hasAnyRole("CM", "FM");
 
                     // MR context
-                    .requestMatchers("/api/v1/rep/**").hasRole("MR")
+                    auth.requestMatchers("/api/v1/rep/**").hasRole("MR");
 
-                    .anyRequest().denyAll()
-            );
+                    auth.anyRequest().denyAll();
+            });
 
         // Must-change-password gate
         http.addFilterAfter(new MustChangePasswordFilter(mapper), org.springframework.security.web.csrf.CsrfFilter.class);
@@ -103,7 +115,7 @@ public class SecurityConfig {
                 "AUTH_REQUIRED",
                 "Authentication required",
                 request.getRequestURI(),
-                response.getHeader("X-Request-Id"),
+                requestId(request),
                 java.util.List.of()
         );
     }
@@ -124,9 +136,16 @@ public class SecurityConfig {
                     code,
                     msg,
                     request.getRequestURI(),
-                    response.getHeader("X-Request-Id"),
+                    requestId(request),
                     java.util.List.of()
             );
         };
+    }
+
+    private String requestId(HttpServletRequest request) {
+        Object attr = request.getAttribute(RequestIdFilter.REQUEST_ID_ATTR);
+        if (attr instanceof String s && !s.isBlank()) return s;
+        String header = request.getHeader(RequestIdFilter.REQUEST_ID_HEADER);
+        return (header == null || header.isBlank()) ? null : header;
     }
 }

@@ -1,6 +1,7 @@
 package com.repnexa.common.api;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -225,9 +226,17 @@ public class GlobalExceptionHandler {
     }
 
     private String requestId(HttpServletRequest req) {
-        // request id is generated server-side and sent back as a response header;
-        // for errors we at least propagate an incoming one if present
-        return Optional.ofNullable(req.getHeader("X-Request-Id")).orElse(null);
+        Object attr = req.getAttribute("requestId");
+        if (attr instanceof String s && !s.isBlank()) {
+            return s;
+        }
+
+        String header = req.getHeader("X-Request-Id");
+        if (header != null && !header.isBlank()) {
+            return header;
+        }
+
+        return null;
     }
 
 

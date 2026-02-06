@@ -38,6 +38,10 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof RepnexaUserDetails u) {
             if (u.mustChangePassword() && !isAllowed(request.getRequestURI())) {
+                String reqId = null;
+                Object attr = request.getAttribute(RequestIdFilter.REQUEST_ID_ATTR);
+                if (attr instanceof String s && !s.isBlank()) reqId = s;
+                if (reqId == null || reqId.isBlank()) reqId = request.getHeader(RequestIdFilter.REQUEST_ID_HEADER);
                 ApiErrorWriter.write(
                         mapper,
                         response,
@@ -46,7 +50,7 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
                         "MUST_CHANGE_PASSWORD",
                         "Password change required before continuing",
                         request.getRequestURI(),
-                        response.getHeader("X-Request-Id"),
+                        reqId,
                         java.util.List.of()
                 );
                 return;
