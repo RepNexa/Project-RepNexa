@@ -21,12 +21,12 @@ public class ScopeEnforcer {
             if (scopeJdbc.isRouteOwnedByFm(actor.id(), routeId)) return;
             throw ApiException.forbidden("SCOPE_FORBIDDEN", "Route is outside your territory scope");
         }
-        throw ApiException.forbidden("FORBIDDEN", "Access denied");
+        throw ApiException.forbidden("RBAC_FORBIDDEN", "Access denied");
     }
 
     public void assertIsMr(RepnexaUserDetails actor) {
         if (actor.role() != UserRole.MR) {
-            throw ApiException.forbidden("FORBIDDEN", "Access denied");
+            throw ApiException.forbidden("RBAC_FORBIDDEN", "Access denied");
         }
     }
 

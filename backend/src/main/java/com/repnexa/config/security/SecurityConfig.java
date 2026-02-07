@@ -122,7 +122,7 @@ public class SecurityConfig {
 
     private AccessDeniedHandler restAccessDeniedHandler(ObjectMapper mapper) {
         return (request, response, accessDeniedException) -> {
-            String code = "FORBIDDEN";
+            String code = "RBAC_FORBIDDEN";
             String msg = "Access denied";
             if (accessDeniedException instanceof CsrfException) {
                 code = "CSRF_INVALID";
