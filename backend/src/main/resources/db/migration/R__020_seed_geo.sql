@@ -2,7 +2,7 @@
 -- Purpose: make assignment flows + scope checks runnable in dev.
 --
 -- Dependencies:
--- - users table must contain fm@repnexa.local (role=FM) from R__seed_users.sql
+-- - users table must contain fm@repnexa.local (role=FM) from R__010_seed_users.sql
 --
 -- Idempotency:
 -- - Uses natural keys (code) with ON CONFLICT DO UPDATE
@@ -16,7 +16,7 @@ BEGIN
     WHERE username = 'fm@repnexa.local'
       AND role = 'FM'
   ) THEN
-    RAISE EXCEPTION 'Dev seed requires FM user fm@repnexa.local (role=FM) to exist. Ensure R__seed_users.sql runs first.';
+    RAISE EXCEPTION 'Dev seed requires FM user fm@repnexa.local (role=FM) to exist. Ensure R__010_seed_users.sql runs first.';
   END IF;
 END $$;
 
