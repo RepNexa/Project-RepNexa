@@ -113,7 +113,7 @@ class GeoAssignmentsRbacTest {
         SessionCtx fm = login("fm@repnexa.local", "FM@1234");
         mvc.perform(get("/api/v1/admin/territories").session(fm.session()))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+                .andExpect(jsonPath("$.code").value("RBAC_FORBIDDEN"));
 
         // FM can assign within owned scope
         var aRes = mvc.perform(post("/api/v1/assignments/rep-routes")
