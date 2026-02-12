@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import AppShell from "../../_components/AppShell";
-import RequireRole from "../../_components/RequireRole";
+import AppShell from "../_components/AppShell";
+import RequireRole from "../_components/RequireRole";
 
 import { apiFetch } from "@/src/lib/api/client";
 import {

@@ -19,17 +19,25 @@ function listPageTsxFiles(dir) {
   return out.sort();
 }
 
-function toRoute(rel, basePrefix) {
-  // rel is path like "(admin)/admin/page.tsx" or "rep/dcr/[id]/page.tsx"
+function toRoute(rel) {
   let s = rel.replace(/\\/g, "/");
-  if (s.startsWith(basePrefix)) s = s.slice(basePrefix.length);
-  if (s.endsWith("/page.tsx")) s = s.slice(0, -"/page.tsx".length);
-  // strip route groups: /(admin)/
-  s = s.replace(/\/\([^/]+\)/g, "");
+
+  // Strip trailing page.tsx (works for "page.tsx" and "x/page.tsx")
+  s = s.replace(/(^|\/)page\.tsx$/, "");
+
+  // Strip route groups like "(admin)" whether at start or mid-path
+  s = s.replace(/(^|\/)\([^/]+\)/g, "");
+
+  // Ensure leading slash
   if (!s.startsWith("/")) s = "/" + s;
-  // normalize double slashes and trailing slash
+
+  // Collapse slashes and trim trailing slash (except root)
   s = s.replace(/\/+/g, "/");
   if (s.length > 1 && s.endsWith("/")) s = s.slice(0, -1);
+
+  // Root becomes "/"
+  if (s === "") s = "/";
+
   return s;
 }
 

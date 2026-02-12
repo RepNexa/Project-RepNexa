@@ -1,4 +1,4 @@
 "use client";
 
-import Page from "@/src/features/legacyPages/admin/routes/page";
+import Page from "@/src/features/legacyPages/admin/AdminRoutes";
 export default Page;
