@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import AppShell from "../_components/AppShell";
-import RequireRole from "../_components/RequireRole";
+import AppShell from "@/src/features/shared/components/legacy/AppShell";
+import RequireRole from "@/src/features/shared/components/legacy/RequireRole";
 
 import { apiFetch } from "@/src/lib/api/client";
 import {
