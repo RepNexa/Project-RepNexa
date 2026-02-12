@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ApiError } from "@/src/lib/api/types";
-import { login, me as fetchMe } from "@/src/features/auth/api";
+import { login } from "@/src/features/auth/api";
 import { routeForRole } from "@/src/features/auth/roleRoutes";
 
 export default function LoginPage() {
@@ -18,8 +18,7 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await login(username, password);
-      const me = await fetchMe();
+      const me = await login(username, password);
       if (me.mustChangePassword) {
         router.replace("/change-password");
         return;
