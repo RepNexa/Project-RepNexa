@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ApiError } from "@/src/lib/api/types";
-import { changePassword, me as fetchMe } from "@/src/features/auth/api";
+import { changePassword } from "@/src/features/auth/api";
 import { routeForRole } from "@/src/features/auth/roleRoutes";
 
 export default function ChangePasswordPage() {
@@ -18,10 +18,11 @@ export default function ChangePasswordPage() {
     setBusy(true);
     setError(null);
     try {
-      await changePassword(currentPassword, newPassword);
-
-      // Re-check /me (session principal may still reflect mustChangePassword=true in-memory in this MVP)
-      const me = await fetchMe();
+      const me = await changePassword(currentPassword, newPassword);
+      if (me.mustChangePassword) {
+        router.replace("/change-password");
+        return;
+      }
       router.replace(routeForRole(me.role));
     } catch (err) {
       setError(err as ApiError);
