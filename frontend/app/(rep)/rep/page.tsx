@@ -1,4 +1,4 @@
 "use client";
 
-import Page from "../../../src/app/rep/page";
+import Page from "../../../src/app_pages/rep/page";
 export default Page;
