@@ -1,4 +1,4 @@
 "use client";
 
-import Page from "@/src/features/legacyPages/rep/RepDcr";
+import Page from "@/src/features/repDcr/pages/legacy/RepDcr";
 export default Page;

@@ -1,4 +1,4 @@
 "use client";
 
-import Page from "@/src/features/legacyPages/rep/RepChemist";
+import Page from "@/src/features/repChemist/pages/legacy/RepChemist";
 export default Page;

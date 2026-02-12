@@ -1,7 +1,7 @@
 "use client";
 
-import AppShell from "../_components/AppShell";
-import RequireRole from "../_components/RequireRole";
+import AppShell from "@/src/features/shared/components/legacy/AppShell";
+import RequireRole from "@/src/features/shared/components/legacy/RequireRole";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/src/lib/api/client";

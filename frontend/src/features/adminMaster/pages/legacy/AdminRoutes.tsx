@@ -1,8 +1,8 @@
 "use client";
 
-import AppShell from "../_components/AppShell";
-import RequireRole from "../_components/RequireRole";
-import AdminList from "../_components/AdminList";
+import AppShell from "@/src/features/shared/components/legacy/AppShell";
+import RequireRole from "@/src/features/shared/components/legacy/RequireRole";
+import AdminList from "@/src/features/shared/components/legacy/AdminList";
 
 export default function RoutesPage() {
   return (
