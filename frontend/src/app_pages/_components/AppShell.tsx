@@ -82,7 +82,7 @@ export default function AppShell({
               <Link className="hover:underline" href="/rep">
                 Rep (MR)
               </Link>
-              <Link className="hover:underline" href="/fm">
+              <Link className="hover:underline" href="/ho">
                 FM
               </Link>
             </nav>
