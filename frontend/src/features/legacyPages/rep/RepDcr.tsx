@@ -1,7 +1,7 @@
 "use client";
 
-import AppShell from "../../_components/AppShell";
-import RequireRole from "../../_components/RequireRole";
+import AppShell from "../_components/AppShell";
+import RequireRole from "../_components/RequireRole";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";

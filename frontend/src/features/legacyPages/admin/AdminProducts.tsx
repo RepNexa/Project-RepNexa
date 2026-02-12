@@ -1,8 +1,8 @@
 "use client";
 
-import AppShell from "../../_components/AppShell";
-import RequireRole from "../../_components/RequireRole";
-import AdminList from "../../_components/AdminList";
+import AppShell from "../_components/AppShell";
+import RequireRole from "../_components/RequireRole";
+import AdminList from "../_components/AdminList";
 
 export default function ProductsPage() {
   return (

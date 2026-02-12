@@ -1,4 +1,4 @@
 "use client";
 
-import MileagePage from "@/src/features/legacyPages/rep/mileage/page";
+import MileagePage from "@/src/features/legacyPages/rep/RepMileage";
 export default MileagePage;
