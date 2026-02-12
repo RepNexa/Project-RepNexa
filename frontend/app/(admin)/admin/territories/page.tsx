@@ -1,4 +1,4 @@
 "use client";
 
-import Page from "../../../../src/app_pages/admin/territories/page";
+import Page from "@/src/features/legacyPages/admin/territories/page";
 export default Page;

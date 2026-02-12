@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../lib/api/client";
 import Link from "next/link";
+import { apiFetch } from "@/src/lib/api/client";
 
 type Me = {
   id: number;
@@ -20,7 +20,7 @@ export default function RequireRole({
 }) {
   const [me, setMe] = useState<Me | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "forbidden" | "anon">(
-    "loading"
+    "loading",
   );
 
   useEffect(() => {

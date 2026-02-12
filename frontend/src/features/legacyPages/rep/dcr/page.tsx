@@ -5,8 +5,8 @@ import RequireRole from "../../_components/RequireRole";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch } from "../../../lib/api/client";
-import type { ApiError } from "../../../lib/api/types";
+import { apiFetch } from "@/src/lib/api/client";
+import type { ApiError } from "@/src/lib/api/types";
 
 type DoctorItem = { id: number; name: string };
 type ProductItem = { id: number; code?: string; name?: string };
@@ -82,7 +82,7 @@ export default function RepDcrPage() {
         if (routeId > 0) {
           const d = await apiFetch<DoctorItem[]>(
             `/rep/doctors?routeId=${routeId}`,
-            { method: "GET", requireCsrf: false }
+            { method: "GET", requireCsrf: false },
           );
           if (!alive) return;
           setDoctors(Array.isArray(d) ? d : []);
@@ -117,7 +117,7 @@ export default function RepDcrPage() {
     try {
       if (!rraId)
         throw new Error(
-          "Missing rraId (repRouteAssignmentId). Open this page from /rep."
+          "Missing rraId (repRouteAssignmentId). Open this page from /rep.",
         );
       if (!routeId)
         throw new Error("Missing routeId. Open this page from /rep.");
@@ -218,7 +218,7 @@ export default function RepDcrPage() {
                 value={productIds.map(String)}
                 onChange={(e) => {
                   const selected = Array.from(e.target.selectedOptions).map(
-                    (o) => Number(o.value)
+                    (o) => Number(o.value),
                   );
                   setProductIds(selected);
                 }}

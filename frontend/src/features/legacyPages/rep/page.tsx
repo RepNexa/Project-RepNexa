@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 import AppShell from "../_components/AppShell";
 import RequireRole from "../_components/RequireRole";
 
-import { apiFetch } from "../../lib/api/client";
+import { apiFetch } from "@/src/lib/api/client";
 import {
   isApiError,
   type ApiError,
   type ApiFieldError,
-} from "../../lib/api/types";
+} from "@/src/lib/api/types";
 
 type AssignedRoute = {
   repRouteAssignmentId: number;
@@ -119,7 +119,7 @@ export default function RepHomePage() {
             <div className="space-y-3">
               {routes.map((r) => {
                 const qp = `routeId=${encodeURIComponent(
-                  r.routeId
+                  r.routeId,
                 )}&rraId=${encodeURIComponent(r.repRouteAssignmentId)}`;
 
                 return (
@@ -153,7 +153,7 @@ export default function RepHomePage() {
                       <Link
                         className="rounded border px-3 py-2 text-sm hover:bg-zinc-50"
                         href={`/rep/mileage?rraId=${encodeURIComponent(
-                          r.repRouteAssignmentId
+                          r.repRouteAssignmentId,
                         )}`}
                       >
                         Mileage

@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "next dev -p 3000",
+    "check:route-collisions": "node scripts/check-route-collisions.mjs",
     "check:route-owner": "node scripts/check-route-owner.mjs",
     "build": "next build",
     "start": "next start -p 3000",

@@ -6,12 +6,12 @@ import { useSearchParams } from "next/navigation";
 import AppShell from "../../_components/AppShell";
 import RequireRole from "../../_components/RequireRole";
 
-import { apiFetch } from "../../../lib/api/client";
+import { apiFetch } from "@/src/lib/api/client";
 import {
   isApiError,
   type ApiError,
   type ApiFieldError,
-} from "../../../lib/api/types";
+} from "@/src/lib/api/types";
 
 type AssignedRoute = {
   repRouteAssignmentId: number;
@@ -111,7 +111,7 @@ export default function MileagePage() {
     try {
       if (!selectedRraId) {
         throw new Error(
-          "No assigned route selected. Create/enable an MR route assignment first."
+          "No assigned route selected. Create/enable an MR route assignment first.",
         );
       }
 

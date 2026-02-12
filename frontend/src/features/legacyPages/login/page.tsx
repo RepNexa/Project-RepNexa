@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import AppShell from "../_components/AppShell";
-import { apiFetch, clearCsrfTokenCache } from "../../lib/api/client";
-import type { ApiError } from "../../lib/api/types";
+import { apiFetch, clearCsrfTokenCache } from "@/src/lib/api/client";
+import type { ApiError } from "@/src/lib/api/types";
 
 type LoginResp = {
   id: number;
