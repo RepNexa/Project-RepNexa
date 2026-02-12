@@ -52,22 +52,34 @@ function routesFromPages(dir, basePrefix) {
 }
 
 const appRoutes = routesFromPages("app", "");
-const legacyRoutes = routesFromPages("src/features/legacyPages", "");
+const legacyDirs = [
+  "src/features/adminMaster/pages/legacy",
+  "src/features/adminGeo/pages/legacy",
+  "src/features/rep/pages/legacy",
+  "src/features/repChemist/pages/legacy",
+  "src/features/repDcr/pages/legacy",
+];
+
+const legacyRoutes = new Set();
+for (const d of legacyDirs) {
+  for (const r of routesFromPages(d, "")) legacyRoutes.add(r);
+}
+
 
 const overlaps = [...appRoutes].filter((r) => legacyRoutes.has(r)).sort();
 
 if (overlaps.length) {
   console.error(
-    "ERROR: route collisions detected between app/ and src/features/legacyPages/",
+    "ERROR: route collisions detected between app/ and legacy feature pages",
   );
   for (const r of overlaps) console.error(" - " + r);
   console.error("");
   console.error(
-    "Fix: move legacy implementations out of src/features/legacyPages/ and update app/* wrappers.",
+    "Fix: move legacy implementations out of legacy feature pages and update app/* wrappers.",
   );
   process.exit(1);
 }
 
 console.log(
-  "OK: no route collisions between app/ and src/features/legacyPages/",
+  "OK: no route collisions between app/ and legacy feature pages",
 );
