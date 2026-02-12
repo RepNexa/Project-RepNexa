@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "../../lib/api/client";
-import type { ApiError } from "../../lib/api/types";
+import { apiFetch } from "@/src/lib/api/client";
+import type { ApiError } from "@/src/lib/api/types";
 
 function formatErr(e: unknown): string {
   const x = e as ApiError;

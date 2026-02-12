@@ -1,4 +1,4 @@
 "use client";
 
-import Page from "../../../../src/app_pages/rep/dcr/page";
+import Page from "@/src/features/legacyPages/rep/dcr/page";
 export default Page;

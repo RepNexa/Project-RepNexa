@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiFetch, clearCsrfTokenCache } from "../../lib/api/client";
-import type { ApiError } from "../../lib/api/types";
+import { apiFetch, clearCsrfTokenCache } from "@/src/lib/api/client";
+import type { ApiError } from "@/src/lib/api/types";
 
 type Me = {
   id: number;

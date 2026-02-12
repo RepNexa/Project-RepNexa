@@ -4,8 +4,8 @@ import AppShell from "../../_components/AppShell";
 import RequireRole from "../../_components/RequireRole";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { apiFetch } from "../../../lib/api/client";
-import type { ApiError, ApiFieldError } from "../../../lib/api/types";
+import { apiFetch } from "@/src/lib/api/client";
+import type { ApiError, ApiFieldError } from "@/src/lib/api/types";
 
 type ChemistItem = { id: number; name: string };
 type ProductItem = { id: number; code?: string; name?: string };
@@ -57,7 +57,7 @@ export default function ChemistPage() {
         if (routeId > 0) {
           const c = await apiFetch<ChemistItem[]>(
             `/rep/chemists?routeId=${routeId}`,
-            { method: "GET", requireCsrf: false }
+            { method: "GET", requireCsrf: false },
           );
           if (!alive) return;
           setChemists(Array.isArray(c) ? c : []);
@@ -101,7 +101,7 @@ export default function ChemistPage() {
         throw new Error("Missing routeId. Open this page from /rep.");
       if (!chemistId)
         throw new Error(
-          "Select a chemist (or do not demo live if none exist)."
+          "Select a chemist (or do not demo live if none exist).",
         );
 
       const body = {
@@ -196,8 +196,8 @@ export default function ChemistPage() {
                         const pid = Number(e.target.value);
                         setFlags((xs) =>
                           xs.map((x, i) =>
-                            i === idx ? { ...x, productId: pid } : x
-                          )
+                            i === idx ? { ...x, productId: pid } : x,
+                          ),
                         );
                       }}
                     >
@@ -215,8 +215,8 @@ export default function ChemistPage() {
                         const st = e.target.value as "OOS" | "LOW";
                         setFlags((xs) =>
                           xs.map((x, i) =>
-                            i === idx ? { ...x, status: st } : x
-                          )
+                            i === idx ? { ...x, status: st } : x,
+                          ),
                         );
                       }}
                     >
