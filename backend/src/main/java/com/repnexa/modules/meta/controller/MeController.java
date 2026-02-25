@@ -2,7 +2,7 @@ package com.repnexa.modules.meta.controller;
  
 import com.repnexa.modules.auth.service.AuthService;
 import com.repnexa.modules.auth.security.RepnexaUserDetails;
-import com.repnexa.modules.meta.dto.MeResponse;
+import com.repnexa.modules.auth.dto.MeResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
  

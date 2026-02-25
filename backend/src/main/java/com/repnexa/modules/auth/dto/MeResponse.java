@@ -1,4 +1,4 @@
-package com.repnexa.modules.meta.dto;
+package com.repnexa.modules.auth.dto;
 
 import com.repnexa.modules.auth.domain.UserRole;
 
