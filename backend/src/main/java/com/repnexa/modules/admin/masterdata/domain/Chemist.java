@@ -30,7 +30,8 @@ public class Chemist {
     @PrePersist
     void prePersist() {
         OffsetDateTime now = OffsetDateTime.now();
-        if (createdAt == null) createdAt = now;
+        if (createdAt == null)
+            createdAt = now;
         updatedAt = now;
     }
 
@@ -39,12 +40,31 @@ public class Chemist {
         updatedAt = OffsetDateTime.now();
     }
 
-    public Long getId() { return id; }
-    public Long getRouteId() { return routeId; }
-    public String getName() { return name; }
-    public OffsetDateTime getDeletedAt() { return deletedAt; }
+    public Long getId() {
+        return id;
+    }
 
-    public void setRouteId(Long routeId) { this.routeId = routeId; }
-    public void setName(String name) { this.name = name; }
-    public void softDeleteNow() { this.deletedAt = OffsetDateTime.now(); }
+    public Long getRouteId() {
+        return routeId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setRouteId(Long routeId) {
+        this.routeId = routeId;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void softDeleteNow() {
+        this.deletedAt = OffsetDateTime.now();
+    }
 }
