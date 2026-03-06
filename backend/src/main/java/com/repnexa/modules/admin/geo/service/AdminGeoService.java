@@ -40,8 +40,7 @@ public class AdminGeoService {
                             t.getName(),
                             t.getOwnerUserId(),
                             ownerUsername,
-                            t.getDeletedAt() != null
-                    );
+                            t.getDeletedAt() != null);
                 })
                 .toList();
     }
@@ -74,12 +73,16 @@ public class AdminGeoService {
 
     @Transactional
     public TerritoryDtos.TerritoryResponse patchTerritory(Long id, TerritoryDtos.PatchTerritoryRequest req) {
-        Territory t = territories.findById(id).orElseThrow(() -> ApiException.notFound("TERRITORY_NOT_FOUND", "Territory not found"));
-        if (t.getDeletedAt() != null) throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
+        Territory t = territories.findById(id)
+                .orElseThrow(() -> ApiException.notFound("TERRITORY_NOT_FOUND", "Territory not found"));
+        if (t.getDeletedAt() != null)
+            throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
 
         if (req != null) {
-            if (!isBlank(req.code())) t.setCode(req.code().trim().toUpperCase());
-            if (!isBlank(req.name())) t.setName(req.name().trim());
+            if (!isBlank(req.code()))
+                t.setCode(req.code().trim().toUpperCase());
+            if (!isBlank(req.name()))
+                t.setName(req.name().trim());
 
             if (req.ownerUsername() != null) {
                 if (isBlank(req.ownerUsername())) {
@@ -118,8 +121,7 @@ public class AdminGeoService {
                             t.getName(),
                             r.getCode(),
                             r.getName(),
-                            r.getDeletedAt() != null
-                    );
+                            r.getDeletedAt() != null);
                 })
                 .toList();
     }
@@ -132,7 +134,8 @@ public class AdminGeoService {
 
         Territory t = territories.findById(req.territoryId())
                 .orElseThrow(() -> ApiException.notFound("TERRITORY_NOT_FOUND", "Territory not found"));
-        if (t.getDeletedAt() != null) throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
+        if (t.getDeletedAt() != null)
+            throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
 
         Route r = new Route();
         r.setTerritoryId(req.territoryId());
@@ -147,18 +150,23 @@ public class AdminGeoService {
     @Transactional
     public RouteDtos.RouteResponse patchRoute(Long id, RouteDtos.PatchRouteRequest req) {
         Route r = routes.findById(id).orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
-        if (r.getDeletedAt() != null) throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
+        if (r.getDeletedAt() != null)
+            throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
 
         if (req != null) {
             if (req.territoryId() != null) {
                 Territory newT = territories.findById(req.territoryId())
                         .orElseThrow(() -> ApiException.notFound("TERRITORY_NOT_FOUND", "Territory not found"));
-                if (newT.getDeletedAt() != null) throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
+                if (newT.getDeletedAt() != null)
+                    throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
                 r.setTerritoryId(req.territoryId());
             }
-            if (!isBlank(req.code())) r.setCode(req.code().trim().toUpperCase());
-            if (!isBlank(req.name())) r.setName(req.name().trim());
-            if (Boolean.TRUE.equals(req.deleted())) r.softDeleteNow();
+            if (!isBlank(req.code()))
+                r.setCode(req.code().trim().toUpperCase());
+            if (!isBlank(req.name()))
+                r.setName(req.name().trim());
+            if (Boolean.TRUE.equals(req.deleted()))
+                r.softDeleteNow();
         }
 
         Route saved = routes.save(r);

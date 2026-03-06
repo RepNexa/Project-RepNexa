@@ -33,7 +33,8 @@ public class Route {
     @PrePersist
     void prePersist() {
         OffsetDateTime now = OffsetDateTime.now();
-        if (createdAt == null) createdAt = now;
+        if (createdAt == null)
+            createdAt = now;
         updatedAt = now;
     }
 
@@ -42,14 +43,39 @@ public class Route {
         updatedAt = OffsetDateTime.now();
     }
 
-    public Long getId() { return id; }
-    public Long getTerritoryId() { return territoryId; }
-    public String getCode() { return code; }
-    public String getName() { return name; }
-    public OffsetDateTime getDeletedAt() { return deletedAt; }
+    public Long getId() {
+        return id;
+    }
 
-    public void setTerritoryId(Long territoryId) { this.territoryId = territoryId; }
-    public void setCode(String code) { this.code = code; }
-    public void setName(String name) { this.name = name; }
-    public void softDeleteNow() { this.deletedAt = OffsetDateTime.now(); }
+    public Long getTerritoryId() {
+        return territoryId;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setTerritoryId(Long territoryId) {
+        this.territoryId = territoryId;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void softDeleteNow() {
+        this.deletedAt = OffsetDateTime.now();
+    }
 }
