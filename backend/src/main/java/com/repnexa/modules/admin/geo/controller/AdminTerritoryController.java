@@ -27,7 +27,8 @@ public class AdminTerritoryController {
     }
 
     @PatchMapping("/{id}")
-    public TerritoryDtos.TerritoryResponse patch(@PathVariable Long id, @RequestBody TerritoryDtos.PatchTerritoryRequest req) {
+    public TerritoryDtos.TerritoryResponse patch(@PathVariable Long id,
+            @RequestBody TerritoryDtos.PatchTerritoryRequest req) {
         return geo.patchTerritory(id, req);
     }
 }

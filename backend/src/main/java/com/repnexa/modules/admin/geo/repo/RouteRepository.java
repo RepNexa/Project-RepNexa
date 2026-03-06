@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface RouteRepository extends JpaRepository<Route, Long> {
     List<Route> findByDeletedAtIsNullOrderByNameAsc();
+
     List<Route> findByTerritoryIdAndDeletedAtIsNullOrderByNameAsc(Long territoryId);
 }
