@@ -22,7 +22,8 @@ public class AdminProductService {
     @Transactional(readOnly = true)
     public List<ProductDtos.ProductResponse> list(String q) {
         return products.searchActiveByPrefix(trimToNull(q)).stream()
-                .map(p -> new ProductDtos.ProductResponse(p.getId(), p.getCode(), p.getName(), p.getDeletedAt() != null))
+                .map(p -> new ProductDtos.ProductResponse(p.getId(), p.getCode(), p.getName(),
+                        p.getDeletedAt() != null))
                 .toList();
     }
 
@@ -45,26 +46,36 @@ public class AdminProductService {
 
     @Transactional
     public ProductDtos.ProductResponse patch(long id, ProductDtos.PatchProductRequest req) {
-        Product p = products.findById(id).orElseThrow(() -> ApiException.notFound("PRODUCT_NOT_FOUND", "Product not found"));
-        if (p.getDeletedAt() != null) throw ApiException.conflict("PRODUCT_DELETED", "Product is deleted");
+        Product p = products.findById(id)
+                .orElseThrow(() -> ApiException.notFound("PRODUCT_NOT_FOUND", "Product not found"));
+        if (p.getDeletedAt() != null)
+            throw ApiException.conflict("PRODUCT_DELETED", "Product is deleted");
 
         if (req != null) {
-            if (!isBlank(req.code())) p.setCode(req.code().trim().toUpperCase());
-            if (!isBlank(req.name())) p.setName(req.name().trim());
-            if (Boolean.TRUE.equals(req.deleted())) p.softDeleteNow();
+            if (!isBlank(req.code()))
+                p.setCode(req.code().trim().toUpperCase());
+            if (!isBlank(req.name()))
+                p.setName(req.name().trim());
+            if (Boolean.TRUE.equals(req.deleted()))
+                p.softDeleteNow();
         }
 
         try {
             Product saved = products.save(p);
-            return new ProductDtos.ProductResponse(saved.getId(), saved.getCode(), saved.getName(), saved.getDeletedAt() != null);
+            return new ProductDtos.ProductResponse(saved.getId(), saved.getCode(), saved.getName(),
+                    saved.getDeletedAt() != null);
         } catch (DataIntegrityViolationException ex) {
             throw ApiException.conflict("PRODUCT_CODE_EXISTS", "Product code already exists");
         }
     }
 
-    private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
     private static String trimToNull(String s) {
-        if (s == null) return null;
+        if (s == null)
+            return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }

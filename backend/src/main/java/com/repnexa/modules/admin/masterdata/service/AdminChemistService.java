@@ -24,7 +24,8 @@ public class AdminChemistService {
     @Transactional(readOnly = true)
     public List<ChemistDtos.ChemistResponse> list(String q) {
         return chemists.searchActiveByNamePrefix(trimToNull(q)).stream()
-                .map(c -> new ChemistDtos.ChemistResponse(c.getId(), c.getRouteId(), c.getName(), c.getDeletedAt() != null))
+                .map(c -> new ChemistDtos.ChemistResponse(c.getId(), c.getRouteId(), c.getName(),
+                        c.getDeletedAt() != null))
                 .toList();
     }
 
@@ -33,8 +34,10 @@ public class AdminChemistService {
         if (req == null || req.routeId() == null || isBlank(req.name())) {
             throw ApiException.badRequest("VALIDATION_ERROR", "routeId and name are required");
         }
-        var r = routes.findById(req.routeId()).orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
-        if (r.getDeletedAt() != null) throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
+        var r = routes.findById(req.routeId())
+                .orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
+        if (r.getDeletedAt() != null)
+            throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
 
         Chemist c = new Chemist();
         c.setRouteId(req.routeId());
@@ -46,26 +49,37 @@ public class AdminChemistService {
 
     @Transactional
     public ChemistDtos.ChemistResponse patch(long id, ChemistDtos.PatchChemistRequest req) {
-        Chemist c = chemists.findById(id).orElseThrow(() -> ApiException.notFound("CHEMIST_NOT_FOUND", "Chemist not found"));
-        if (c.getDeletedAt() != null) throw ApiException.conflict("CHEMIST_DELETED", "Chemist is deleted");
+        Chemist c = chemists.findById(id)
+                .orElseThrow(() -> ApiException.notFound("CHEMIST_NOT_FOUND", "Chemist not found"));
+        if (c.getDeletedAt() != null)
+            throw ApiException.conflict("CHEMIST_DELETED", "Chemist is deleted");
 
         if (req != null) {
             if (req.routeId() != null) {
-                var r = routes.findById(req.routeId()).orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
-                if (r.getDeletedAt() != null) throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
+                var r = routes.findById(req.routeId())
+                        .orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
+                if (r.getDeletedAt() != null)
+                    throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
                 c.setRouteId(req.routeId());
             }
-            if (!isBlank(req.name())) c.setName(req.name().trim());
-            if (Boolean.TRUE.equals(req.deleted())) c.softDeleteNow();
+            if (!isBlank(req.name()))
+                c.setName(req.name().trim());
+            if (Boolean.TRUE.equals(req.deleted()))
+                c.softDeleteNow();
         }
 
         Chemist saved = chemists.save(c);
-        return new ChemistDtos.ChemistResponse(saved.getId(), saved.getRouteId(), saved.getName(), saved.getDeletedAt() != null);
+        return new ChemistDtos.ChemistResponse(saved.getId(), saved.getRouteId(), saved.getName(),
+                saved.getDeletedAt() != null);
     }
 
-    private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
     private static String trimToNull(String s) {
-        if (s == null) return null;
+        if (s == null)
+            return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
     }
