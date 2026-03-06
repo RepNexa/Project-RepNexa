@@ -8,7 +8,7 @@ export default function RoutesPage() {
   return (
     <AppShell title="Admin (CM) – Routes">
       <RequireRole role="CM">
-        <AdminList title="GET /api/v1/admin/routes" endpoint="/admin/routes" />
+        <AdminList title="Routes" endpoint="/admin/routes" />
       </RequireRole>
     </AppShell>
   );
