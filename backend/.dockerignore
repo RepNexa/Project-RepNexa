@@ -1,0 +1,8 @@
+target
+.audit
+.tmp
+*.log
+cookies*.txt
+actuator_mappings.json
+.git
+.gitignore

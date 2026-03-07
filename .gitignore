@@ -1,2 +1,24 @@
 .idea/
 _lists/
+
+# local audit / scratch artifacts
+.audit/
+.backup/
+.tmp/
+audit/
+**/.audit/
+**/.tmp/
+**/audit_artifacts/
+
+# local request/response dumps
+cookies*.txt
+csrf*.json
+me_*.txt
+out_*.txt
+actuator_mappings.json
+*.dump
+*.dumpstream
+
+# manual backup files
+*.bak
+*.orig

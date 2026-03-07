@@ -1,0 +1,12 @@
+node_modules
+.next
+.audit
+.tmp
+audit_artifacts
+*.log
+cookies*.txt
+csrf*.json
+me_*.txt
+out_*.txt
+.git
+.gitignore

@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:9090}
   servlet:
     session:
       cookie:
@@ -9,9 +9,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/repnexa
-    username: repnexa
-    password: repnexa
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/repnexa}
+    username: ${SPRING_DATASOURCE_USERNAME:repnexa}
+    password: ${SPRING_DATASOURCE_PASSWORD:repnexa}
   jpa:
     hibernate:
       ddl-auto: validate

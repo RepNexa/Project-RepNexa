@@ -17,21 +17,23 @@ services:
     build:
       context: ./backend
     environment:
+      SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/repnexa
       SPRING_DATASOURCE_USERNAME: repnexa
       SPRING_DATASOURCE_PASSWORD: repnexa
       REPNEXA_SESSION_COOKIE_SECURE: "false"
+      PORT: 9090
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "9090:9090"
 
   frontend:
     build:
       context: ./frontend
     environment:
-      API_ORIGIN: http://backend:8080
+      API_ORIGIN: http://backend:9090
     depends_on:
       - backend
     ports:
