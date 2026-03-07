@@ -1,10 +1,11 @@
 server:
   port: ${PORT:9090}
+  forward-headers-strategy: framework
   servlet:
     session:
       cookie:
         http-only: true
-        secure: ${REPNEXA_SESSION_COOKIE_SECURE:false}
+        secure: ${REPNEXA_SESSION_COOKIE_SECURE:true}
         same-site: LAX
 
 spring:
