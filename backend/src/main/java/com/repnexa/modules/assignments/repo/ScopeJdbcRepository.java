@@ -17,6 +17,45 @@ public class ScopeJdbcRepository {
         this.jdbc = jdbc;
     }
 
+    public List<Long> listAllowedRouteIdsForFm(long fmUserId) {
+        return jdbc.query("""
+            SELECT r.id
+            FROM routes r
+            JOIN territories t ON t.id = r.territory_id
+            WHERE r.deleted_at IS NULL
+              AND t.deleted_at IS NULL
+              AND t.owner_user_id = ?
+            ORDER BY r.id
+        """, (rs, i) -> rs.getLong("id"), fmUserId);
+    }
+
+    public List<Long> listAllActiveRouteIdsForCm() {
+        return jdbc.query("""
+            SELECT r.id
+            FROM routes r
+            JOIN territories t ON t.id = r.territory_id
+            WHERE r.deleted_at IS NULL
+              AND t.deleted_at IS NULL
+            ORDER BY r.id
+        """, (rs, i) -> rs.getLong("id"));
+    }
+
+    public List<Long> listAllowedRouteIdsForMr(long repUserId) {
+        return jdbc.query("""
+            SELECT DISTINCT a.route_id AS id
+            FROM rep_route_assignments a
+            JOIN routes r ON r.id = a.route_id
+            JOIN territories t ON t.id = r.territory_id
+            WHERE a.rep_user_id = ?
+              AND a.enabled = TRUE
+              AND a.start_date <= CURRENT_DATE
+              AND (a.end_date IS NULL OR a.end_date >= CURRENT_DATE)
+              AND r.deleted_at IS NULL
+              AND t.deleted_at IS NULL
+            ORDER BY a.route_id
+        """, (rs, i) -> rs.getLong("id"), repUserId);
+    }
+
     public boolean isRouteOwnedByFm(long fmUserId, long routeId) {
         Integer cnt = jdbc.queryForObject("""
             SELECT COUNT(*)
