@@ -8,8 +8,8 @@ import { routeForRole } from "@/src/features/auth/roleRoutes";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("cm@repnexa.local");
-  const [password, setPassword] = useState("CM@1234");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -84,11 +84,6 @@ export default function LoginPage() {
           ) : null}
         </div>
       )}
-
-      <div style={{ marginTop: 16, fontSize: 12, opacity: 0.8 }}>
-        Dev users: cm@repnexa.local / CM@1234 • fm@repnexa.local / FM@1234 •
-        mr@repnexa.local / MR@1234
-      </div>
     </div>
   );
 }
