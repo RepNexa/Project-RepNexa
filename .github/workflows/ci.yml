@@ -40,7 +40,7 @@ jobs:
         run: chmod +x mvnw
 
       - name: Package backend (skip tests for CI v1)
-        run: ./mvnw -q -DskipTests package
+        run: ./mvnw -q -Dmaven.test.skip=true package
 
   frontend-build:
     name: Frontend build
