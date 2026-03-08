@@ -5,7 +5,6 @@ import com.repnexa.common.api.ApiErrorWriter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +22,7 @@ import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.http.HttpMethod;
 
 
 @Configuration
@@ -38,6 +38,16 @@ public class SecurityConfig {
     }
 
     @Bean
+    AuthenticationEntryPoint apiAuthenticationEntryPoint(ObjectMapper mapper) {
+        return new ApiAuthenticationEntryPoint(mapper);
+    }
+
+    @Bean
+    AccessDeniedHandler apiAccessDeniedHandler(ObjectMapper mapper) {
+        return new ApiAccessDeniedHandler(mapper);
+    }
+
+    @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
     }
@@ -48,7 +58,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper mapper, Environment env) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectMapper mapper,
+            Environment env,
+            AuthenticationEntryPoint apiAuthenticationEntryPoint,
+            AccessDeniedHandler apiAccessDeniedHandler
+    ) throws Exception {
         CookieCsrfTokenRepository csrfRepo = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepo.setCookieName("XSRF-TOKEN");
         csrfRepo.setHeaderName("X-CSRF-Token");
@@ -63,12 +79,12 @@ public class SecurityConfig {
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .exceptionHandling(eh -> eh
-                    .authenticationEntryPoint(restAuthEntryPoint(mapper))
-                    .accessDeniedHandler(restAccessDeniedHandler(mapper))
+                    .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                    .accessDeniedHandler(apiAccessDeniedHandler)
             )
             .authorizeHttpRequests(auth -> {
                     auth.requestMatchers("/api/v1/auth/csrf").permitAll();
-                   auth.requestMatchers("/api/v1/auth/login").permitAll();
+                    auth.requestMatchers("/api/v1/auth/login").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll();
 
                     if (dev) {
@@ -79,11 +95,20 @@ public class SecurityConfig {
                     auth.requestMatchers("/api/v1/auth/logout").authenticated();
                     auth.requestMatchers("/api/v1/auth/change-password").authenticated();
 
-                    // CM-only admin geo
+                    // CM-only admin
                     auth.requestMatchers("/api/v1/admin/**").hasRole("CM");
 
                     // Lookups: authenticated (CM/FM/MR)
                     auth.requestMatchers("/api/v1/lookup/**").authenticated();
+
+                    // Meta endpoints: authenticated (CM/FM/MR)
+                    auth.requestMatchers("/api/v1/meta/**").authenticated();
+
+                    // Reports export: CM only
+                    auth.requestMatchers("/api/v1/reports/**").hasRole("CM");
+
+                    // Analytics: CM or FM (scope enforced in service/controller)
+                    auth.requestMatchers("/api/v1/analytics/**").hasAnyRole("CM", "FM");
 
                     // Doctor-route assignments are CM-only (override broader assignments rule)
                     auth.requestMatchers(
@@ -104,48 +129,5 @@ public class SecurityConfig {
         http.addFilterAfter(new MustChangePasswordFilter(mapper), org.springframework.security.web.csrf.CsrfFilter.class);
 
         return http.build();
-    }
-
-    private AuthenticationEntryPoint restAuthEntryPoint(ObjectMapper mapper) {
-        return (request, response, authException) -> ApiErrorWriter.write(
-                mapper,
-                response,
-                401,
-                "Unauthorized",
-                "AUTH_REQUIRED",
-                "Authentication required",
-                request.getRequestURI(),
-                requestId(request),
-                java.util.List.of()
-        );
-    }
-
-    private AccessDeniedHandler restAccessDeniedHandler(ObjectMapper mapper) {
-        return (request, response, accessDeniedException) -> {
-            String code = "RBAC_FORBIDDEN";
-            String msg = "Access denied";
-            if (accessDeniedException instanceof CsrfException) {
-                code = "CSRF_INVALID";
-                msg = "CSRF token missing or invalid";
-            }
-            ApiErrorWriter.write(
-                    mapper,
-                    response,
-                    403,
-                    "Forbidden",
-                    code,
-                    msg,
-                    request.getRequestURI(),
-                    requestId(request),
-                    java.util.List.of()
-            );
-        };
-    }
-
-    private String requestId(HttpServletRequest request) {
-        Object attr = request.getAttribute(RequestIdFilter.REQUEST_ID_ATTR);
-        if (attr instanceof String s && !s.isBlank()) return s;
-        String header = request.getHeader(RequestIdFilter.REQUEST_ID_HEADER);
-        return (header == null || header.isBlank()) ? null : header;
     }
 }
