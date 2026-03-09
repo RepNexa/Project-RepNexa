@@ -26,6 +26,7 @@ type MissedRow = {
   doctorId: number | null;
   doctorLabel: string;
   reason: string;
+  remark: string;
 };
 
 type Draft = {
@@ -48,9 +49,9 @@ function todayISO(): string {
 }
 
 function newIdemKey(): string {
-  // browser-safe
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
+  }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
@@ -75,6 +76,7 @@ function parseRowErrors(fieldErrors?: ApiFieldError[]): {
       out.doctorRow[idx].push(m);
       continue;
     }
+
     const md = /^missedDoctors\[(\d+)\]\./.exec(f);
     if (md) {
       const idx = Number(md[1]);
@@ -82,6 +84,7 @@ function parseRowErrors(fieldErrors?: ApiFieldError[]): {
       out.missedRow[idx].push(m);
     }
   }
+
   return out;
 }
 
@@ -115,7 +118,6 @@ export function DcrPage() {
     missedRow: {},
   });
 
-  // Load context + restore draft
   useEffect(() => {
     (async () => {
       try {
@@ -124,17 +126,33 @@ export function DcrPage() {
 
         const raw = localStorage.getItem(LS_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as Draft;
+          const parsed = JSON.parse(raw) as Partial<Draft>;
+
           setDraft((prev) => ({
             ...prev,
             ...parsed,
-            // keep a key if present; if missing, create
+            doctorRows:
+              parsed.doctorRows?.map((row) => ({
+                doctorId: row.doctorId ?? null,
+                doctorLabel: row.doctorLabel ?? "",
+                callType: row.callType ?? "",
+                productIds: Array.isArray(row.productIds) ? row.productIds : [],
+                productLabels: Array.isArray(row.productLabels)
+                  ? row.productLabels
+                  : [],
+              })) ?? prev.doctorRows,
+            missedRows:
+              parsed.missedRows?.map((m) => ({
+                doctorId: m.doctorId ?? null,
+                doctorLabel: m.doctorLabel ?? "",
+                reason: m.reason ?? "",
+                remark: m.remark ?? "",
+              })) ?? prev.missedRows,
             idempotencyKey: parsed.idempotencyKey || newIdemKey(),
           }));
           return;
         }
 
-        // initialize from first route
         if (c.routes.length > 0) {
           setDraft((prev) => ({
             ...prev,
@@ -148,7 +166,6 @@ export function DcrPage() {
     })();
   }, []);
 
-  // Persist draft
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(draft));
@@ -160,15 +177,13 @@ export function DcrPage() {
   const routes = useMemo(() => ctx?.routes ?? [], [ctx]);
 
   function setRouteByAssignment(repRouteAssignmentId: number) {
-    const r = routes.find(
-      (x) => x.repRouteAssignmentId === repRouteAssignmentId
-    );
+    const r = routes.find((x) => x.repRouteAssignmentId === repRouteAssignmentId);
     if (!r) return;
+
     setDraft((prev) => ({
       ...prev,
       repRouteAssignmentId,
       routeId: r.routeId,
-      // Changing route invalidates doctor selections; keep structure but clear ids/labels
       doctorRows: prev.doctorRows.map((row) => ({
         ...row,
         doctorId: null,
@@ -183,6 +198,7 @@ export function DcrPage() {
       })),
       idempotencyKey: newIdemKey(),
     }));
+
     setRowErrors({ doctorRow: {}, missedRow: {} });
     setErr(null);
   }
@@ -217,13 +233,17 @@ export function DcrPage() {
     }[];
 
     const missedDoctors = draft.missedRows
-      .map((m) => ({ doctorId: m.doctorId, reason: m.reason.trim() || null }))
+      .map((m) => ({
+        doctorId: m.doctorId,
+        reason: m.reason.trim() || null,
+        remark: m.remark.trim() || null,
+      }))
       .filter((x) => x.doctorId !== null) as {
       doctorId: number;
       reason: string | null;
+      remark: string | null;
     }[];
 
-    // client-side minimum validation (server still enforces)
     const localFieldErrors: ApiFieldError[] = [];
     draft.doctorRows.forEach((r, i) => {
       if (r.doctorId !== null && !r.callType.trim()) {
@@ -233,12 +253,14 @@ export function DcrPage() {
         });
       }
     });
+
     if (localFieldErrors.length > 0) {
       setRowErrors(parseRowErrors(localFieldErrors));
       return;
     }
 
     setSubmitBusy(true);
+
     try {
       const res = await createDcrSubmission(
         {
@@ -252,6 +274,7 @@ export function DcrPage() {
           missedDoctors: missedDoctors.map((m) => ({
             doctorId: m.doctorId,
             reason: m.reason,
+            remark: m.remark,
           })),
         },
         draft.idempotencyKey
@@ -259,6 +282,7 @@ export function DcrPage() {
 
       setCreatedId(res.id);
       localStorage.removeItem(LS_KEY);
+
       setDraft({
         repRouteAssignmentId: draft.repRouteAssignmentId,
         routeId: draft.routeId,
@@ -359,10 +383,7 @@ export function DcrPage() {
             style={{ width: "100%", padding: 8, marginTop: 6 }}
           >
             {routes.map((r) => (
-              <option
-                key={r.repRouteAssignmentId}
-                value={r.repRouteAssignmentId}
-              >
+              <option key={r.repRouteAssignmentId} value={r.repRouteAssignmentId}>
                 {r.territoryName} / {r.routeName} ({r.routeCode})
               </option>
             ))}
@@ -418,9 +439,7 @@ export function DcrPage() {
                     label: `${d.name}${d.specialty ? ` — ${d.specialty}` : ""}`,
                     value: {
                       id: d.id,
-                      label: `${d.name}${
-                        d.specialty ? ` — ${d.specialty}` : ""
-                      }`,
+                      label: `${d.name}${d.specialty ? ` — ${d.specialty}` : ""}`,
                     },
                   })
                 );
@@ -521,9 +540,7 @@ export function DcrPage() {
 
           {row.productLabels.length > 0 ? (
             <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
-                Selected products:
-              </div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>Selected products:</div>
               <div
                 style={{
                   display: "flex",
@@ -541,9 +558,7 @@ export function DcrPage() {
                         const next = [...p.doctorRows];
                         const r = next[idx];
                         const ids = r.productIds.filter((_, i) => i !== pIdx);
-                        const labels = r.productLabels.filter(
-                          (_, i) => i !== pIdx
-                        );
+                        const labels = r.productLabels.filter((_, i) => i !== pIdx);
                         next[idx] = {
                           ...r,
                           productIds: ids,
@@ -636,9 +651,7 @@ export function DcrPage() {
                     label: `${d.name}${d.specialty ? ` — ${d.specialty}` : ""}`,
                     value: {
                       id: d.id,
-                      label: `${d.name}${
-                        d.specialty ? ` — ${d.specialty}` : ""
-                      }`,
+                      label: `${d.name}${d.specialty ? ` — ${d.specialty}` : ""}`,
                     },
                   })
                 );
@@ -694,6 +707,34 @@ export function DcrPage() {
             </button>
           </div>
 
+          <div style={{ marginTop: 12 }}>
+            <label style={{ display: "block" }}>
+              Remark / note (optional)
+              <textarea
+                value={row.remark}
+                onChange={(e) =>
+                  setDraft((p) => {
+                    const next = [...p.missedRows];
+                    next[idx] = { ...next[idx], remark: e.target.value };
+                    return {
+                      ...p,
+                      missedRows: next,
+                      idempotencyKey: newIdemKey(),
+                    };
+                  })
+                }
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  marginTop: 6,
+                  resize: "vertical",
+                }}
+                placeholder="Any extra explanation..."
+              />
+            </label>
+          </div>
+
           {rowErrors.missedRow[idx]?.length ? (
             <div style={{ marginTop: 10, color: "crimson" }}>
               {rowErrors.missedRow[idx].map((m, i) => (
@@ -711,7 +752,7 @@ export function DcrPage() {
             ...p,
             missedRows: [
               ...p.missedRows,
-              { doctorId: null, doctorLabel: "", reason: "" },
+              { doctorId: null, doctorLabel: "", reason: "", remark: "" },
             ],
             idempotencyKey: newIdemKey(),
           }))
@@ -730,6 +771,7 @@ export function DcrPage() {
         >
           Submit DCR
         </button>
+
         <button
           type="button"
           disabled={submitBusy}
