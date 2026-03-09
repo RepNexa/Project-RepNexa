@@ -18,12 +18,14 @@ public final class DcrSubmissionDtos {
     public record DoctorCallInput(
             Long doctorId,
             String callType,
-            List<Long> productIds
+            List<Long> productIds,
+            String remark
     ) {}
 
     public record MissedDoctorInput(
             Long doctorId,
-            String reason
+            String reason,
+            String remark
     ) {}
 
     // ---------- Responses ----------
@@ -61,6 +63,7 @@ public final class DcrSubmissionDtos {
             String doctorName,
             String specialty,
             String callType,
+            String remark,
             List<ProductItem> products
     ) {}
 
@@ -69,7 +72,8 @@ public final class DcrSubmissionDtos {
             Long doctorId,
             String doctorName,
             String specialty,
-            String reason
+            String reason,
+            String remark
     ) {}
 
     public record ProductItem(
