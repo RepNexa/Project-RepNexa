@@ -140,11 +140,12 @@ public class DcrSubmissionService {
 
         try {
             for (var c : doctorCalls) {
-                long callId = repo.insertDoctorCall(submissionId, actor.id(), routeId, callDate, c.doctorId(), c.callType().trim());
+                String remark = trimToNull(c.remark());  // Extract remark
+                long callId = repo.insertDoctorCall(submissionId, actor.id(), routeId, callDate, c.doctorId(), c.callType().trim(), remark);
                 repo.insertDoctorCallProducts(callId, normalizeIds(c.productIds()));
             }
             for (var m : missed) {
-                repo.insertMissedDoctor(submissionId, actor.id(), routeId, callDate, m.doctorId(), trimToNull(m.reason()));
+                repo.insertMissedDoctor(submissionId, actor.id(), routeId, callDate, m.doctorId(), trimToNull(m.reason()),trimToNull(m.remark()));
             }
         } catch (DataIntegrityViolationException ex) {
             // Race-condition fallback: DB constraints still enforce uniqueness.
