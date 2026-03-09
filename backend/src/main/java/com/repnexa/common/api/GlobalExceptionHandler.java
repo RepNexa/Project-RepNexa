@@ -1,8 +1,17 @@
 package com.repnexa.common.api;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.core.NestedExceptionUtils;
+
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +21,16 @@ import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+
+// Spring MVC can throw this for "no resource" paths (e.g., trailing slash variants).
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -25,6 +41,13 @@ import java.util.regex.Pattern;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private final Environment env;
+
+    public GlobalExceptionHandler(Environment env) {
+        this.env = env;
+    }
 
     // --- API exceptions (your domain errors) ---
     @ExceptionHandler(ApiException.class)
@@ -206,10 +229,114 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
+    // --- Missing required query param (?routeId=...) ---
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> handleMissingParam(MissingServletRequestParameterException ex, HttpServletRequest req) {
+        ApiError body = new ApiError(
+                OffsetDateTime.now(),
+                400,
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "VALIDATION_ERROR",
+                "Missing required parameter: " + ex.getParameterName(),
+                req.getRequestURI(),
+                requestId(req),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // --- Query param type mismatch (?routeId=abc) ---
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        String name = ex.getName();
+        String val = (ex.getValue() == null ? "null" : ex.getValue().toString());
+
+        ApiError body = new ApiError(
+                OffsetDateTime.now(),
+                400,
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "VALIDATION_ERROR",
+                "Invalid parameter: " + name + "=" + val,
+                req.getRequestURI(),
+                requestId(req),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // --- No handler mapped (unknown endpoint) ---
+    // NOTE: Only triggers if Spring is configured to throw NoHandlerFoundException.
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ApiError> handleNoHandler(NoHandlerFoundException ex, HttpServletRequest req) {
+        ApiError body = new ApiError(
+                OffsetDateTime.now(),
+                404,
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                "NOT_FOUND",
+                "No handler for " + ex.getHttpMethod() + " " + ex.getRequestURL(),
+                req.getRequestURI(),
+                requestId(req),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    // --- No static resource / no endpoint matched (often seen as 404 instead of NoHandlerFoundException) ---
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResource(NoResourceFoundException ex, HttpServletRequest req) {
+        ApiError body = new ApiError(
+                OffsetDateTime.now(),
+                404,
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                "NOT_FOUND",
+                "Not found",
+                req.getRequestURI(),
+                requestId(req),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    // --- ResponseStatusException (sometimes used internally to represent 404/405/etc.) ---
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException ex, HttpServletRequest req) {
+        int status = ex.getStatusCode().value();
+        HttpStatus hs = HttpStatus.resolve(status);
+        String reason = (hs != null ? hs.getReasonPhrase() : "Error");
+
+        String code =
+                (status == 404) ? "NOT_FOUND" :
+                (status == 405) ? "METHOD_NOT_ALLOWED" :
+                "ERROR";
+
+        String msg =
+                (status == 404) ? "Not found" :
+                (status == 405) ? "Method not allowed" :
+                (ex.getReason() != null ? ex.getReason() : "Request failed");
+
+        ApiError body = new ApiError(
+                OffsetDateTime.now(),
+                status,
+                reason,
+                code,
+                msg,
+                req.getRequestURI(),
+                requestId(req),
+                List.of()
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
 
     // --- Fallback ---
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnhandled(Exception ex, HttpServletRequest req) {
+        // Dev-only: log stack trace for auditing without changing API responses.
+        if (env.acceptsProfiles(Profiles.of("dev"))) {
+            log.error("Unhandled exception requestId={} method={} path={}",
+                    requestId(req), req.getMethod(), req.getRequestURI(), ex);
+        }
+
         ApiError body = new ApiError(
                 OffsetDateTime.now(),
                 500,
