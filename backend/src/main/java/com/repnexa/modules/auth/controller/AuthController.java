@@ -4,7 +4,7 @@ import com.repnexa.modules.auth.dto.ChangePasswordRequest;
 import com.repnexa.modules.auth.dto.CsrfResponse;
 import com.repnexa.modules.auth.dto.LoginRequest;
 import com.repnexa.modules.auth.service.AuthService;
-import com.repnexa.modules.auth.dto.MeResponse;
+import com.repnexa.modules.meta.dto.MeResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
