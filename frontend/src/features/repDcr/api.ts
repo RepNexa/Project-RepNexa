@@ -4,11 +4,13 @@ export type DcrDoctorCallInput = {
   doctorId: number;
   callType: string;
   productIds: number[];
+  remark?: string;
 };
 
 export type DcrMissedDoctorInput = {
   doctorId: number;
   reason?: string | null;
+  remark?: string | null;   // ← Added so Optional note saves
 };
 
 export type CreateDcrSubmissionRequest = {
