@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS doctor_calls (
   call_date DATE NOT NULL,
   doctor_id BIGINT NOT NULL REFERENCES doctors(id),
   call_type VARCHAR(40) NOT NULL,
+  remark VARCHAR(500) NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   CONSTRAINT ux_doctor_calls_rep_doctor_date UNIQUE (rep_user_id, doctor_id, call_date),
@@ -54,8 +55,9 @@ CREATE TABLE IF NOT EXISTS missed_doctors (
   missed_date DATE NOT NULL,
   doctor_id BIGINT NOT NULL REFERENCES doctors(id),
   reason VARCHAR(240) NULL,
+  remark VARCHAR(500) NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
+  
   CONSTRAINT ux_missed_doctors_rep_doctor_date UNIQUE (rep_user_id, doctor_id, missed_date),
   CONSTRAINT fk_missed_doctors_doctor_route_membership
     FOREIGN KEY (doctor_id, route_id) REFERENCES doctor_routes(doctor_id, route_id)
