@@ -20,11 +20,14 @@ public class DcrSubmissionsJdbcRepository {
 
     public Optional<Long> findByIdempotencyKey(long repUserId, String key) {
         if (key == null || key.isBlank()) return Optional.empty();
+
         List<Long> ids = jdbc.query("""
-            SELECT id FROM dcr_submissions
+            SELECT id
+            FROM dcr_submissions
             WHERE rep_user_id = ? AND idempotency_key = ?
             LIMIT 1
         """, (rs, i) -> rs.getLong("id"), repUserId, key);
+
         return ids.isEmpty() ? Optional.empty() : Optional.of(ids.get(0));
     }
 
@@ -33,21 +36,42 @@ public class DcrSubmissionsJdbcRepository {
             INSERT INTO dcr_submissions (rep_user_id, rep_route_assignment_id, call_date, idempotency_key)
             VALUES (?, ?, ?, ?)
             RETURNING id
-        """, Long.class, repUserId, repRouteAssignmentId, callDate,
-                (idempotencyKey == null || idempotencyKey.isBlank()) ? null : idempotencyKey);
+        """, Long.class,
+                repUserId,
+                repRouteAssignmentId,
+                callDate,
+                (idempotencyKey == null || idempotencyKey.isBlank()) ? null : idempotencyKey
+        );
     }
 
     public long insertDoctorCall(long submissionId, long repUserId, long routeId, LocalDate callDate,
-                                 long doctorId, String callType) {
+                                 long doctorId, String callType, String remark) {
         return jdbc.queryForObject("""
-            INSERT INTO doctor_calls (submission_id, rep_user_id, route_id, call_date, doctor_id, call_type)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO doctor_calls (
+                submission_id,
+                rep_user_id,
+                route_id,
+                call_date,
+                doctor_id,
+                call_type,
+                remark
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             RETURNING id
-        """, Long.class, submissionId, repUserId, routeId, callDate, doctorId, callType);
+        """, Long.class,
+                submissionId,
+                repUserId,
+                routeId,
+                callDate,
+                doctorId,
+                callType,
+                remark
+        );
     }
 
     public void insertDoctorCallProducts(long doctorCallId, List<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) return;
+
         jdbc.batchUpdate("""
             INSERT INTO doctor_call_products (doctor_call_id, product_id)
             VALUES (?, ?)
@@ -58,16 +82,17 @@ public class DcrSubmissionsJdbcRepository {
     }
 
     public long insertMissedDoctor(long submissionId, long repUserId, long routeId, LocalDate missedDate,
-                                   long doctorId, String reason) {
-        return jdbc.queryForObject("""
-            INSERT INTO missed_doctors (submission_id, rep_user_id, route_id, missed_date, doctor_id, reason)
-            VALUES (?, ?, ?, ?, ?, ?)
-            RETURNING id
-        """, Long.class, submissionId, repUserId, routeId, missedDate, doctorId, reason);
+                               long doctorId, String reason, String remark) {
+    return jdbc.queryForObject("""
+        INSERT INTO missed_doctors (submission_id, rep_user_id, route_id, missed_date, doctor_id, reason, remark)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        RETURNING id
+    """, Long.class, submissionId, repUserId, routeId, missedDate, doctorId, reason, remark);
     }
 
     public Set<Long> findExistingDoctorCallDoctorIds(long repUserId, LocalDate callDate, Collection<Long> doctorIds) {
         if (doctorIds == null || doctorIds.isEmpty()) return Set.of();
+
         String in = doctorIds.stream().map(x -> "?").collect(Collectors.joining(","));
         List<Object> args = new ArrayList<>();
         args.add(repUserId);
@@ -87,6 +112,7 @@ public class DcrSubmissionsJdbcRepository {
 
     public Set<Long> findExistingMissedDoctorDoctorIds(long repUserId, LocalDate missedDate, Collection<Long> doctorIds) {
         if (doctorIds == null || doctorIds.isEmpty()) return Set.of();
+
         String in = doctorIds.stream().map(x -> "?").collect(Collectors.joining(","));
         List<Object> args = new ArrayList<>();
         args.add(repUserId);
@@ -167,27 +193,36 @@ public class DcrSubmissionsJdbcRepository {
         ), repUserId, submissionId);
 
         if (subRows.isEmpty()) return Optional.empty();
-        SubmissionRow sub = subRows.get(0);
 
+        SubmissionRow sub = subRows.get(0);
         List<DcrSubmissionDtos.DoctorCallDetails> calls = loadDoctorCalls(submissionId);
         List<DcrSubmissionDtos.MissedDoctorDetails> missed = loadMissedDoctors(submissionId);
 
         return Optional.of(new DcrSubmissionDtos.SubmissionDetails(
-                sub.id, sub.callDate, sub.repRouteAssignmentId, sub.routeId,
-                sub.routeName, sub.routeCode, sub.territoryName, sub.submittedAt,
-                calls, missed
+                sub.id(),
+                sub.callDate(),
+                sub.repRouteAssignmentId(),
+                sub.routeId(),
+                sub.routeName(),
+                sub.routeCode(),
+                sub.territoryName(),
+                sub.submittedAt(),
+                calls,
+                missed
         ));
     }
 
     private List<DcrSubmissionDtos.DoctorCallDetails> loadDoctorCalls(long submissionId) {
-        record CallRow(long id, long doctorId, String doctorName, String specialty, String callType) {}
+        record CallRow(long id, long doctorId, String doctorName, String specialty, String callType, String remark) {}
+
         List<CallRow> rows = jdbc.query("""
             SELECT
               dc.id,
               d.id AS doctor_id,
               d.name AS doctor_name,
               d.specialty,
-              dc.call_type
+              dc.call_type,
+              dc.remark
             FROM doctor_calls dc
             JOIN doctors d ON d.id = dc.doctor_id
             WHERE dc.submission_id = ?
@@ -197,7 +232,8 @@ public class DcrSubmissionsJdbcRepository {
                 rs.getLong("doctor_id"),
                 rs.getString("doctor_name"),
                 rs.getString("specialty"),
-                rs.getString("call_type")
+                rs.getString("call_type"),
+                rs.getString("remark")
         ), submissionId);
 
         Map<Long, List<DcrSubmissionDtos.ProductItem>> productsByCall = jdbc.query("""
@@ -213,47 +249,54 @@ public class DcrSubmissionsJdbcRepository {
             )
             ORDER BY dcp.doctor_call_id, p.name
         """, rs -> {
-            Map<Long, List<DcrSubmissionDtos.ProductItem>> m = new HashMap<>();
+            Map<Long, List<DcrSubmissionDtos.ProductItem>> map = new HashMap<>();
             while (rs.next()) {
                 long callId = rs.getLong("doctor_call_id");
-                m.computeIfAbsent(callId, k -> new ArrayList<>())
+                map.computeIfAbsent(callId, k -> new ArrayList<>())
                         .add(new DcrSubmissionDtos.ProductItem(
                                 rs.getLong("product_id"),
                                 rs.getString("code"),
                                 rs.getString("name")
                         ));
             }
-            return m;
+            return map;
         }, submissionId);
 
         return rows.stream()
                 .map(r -> new DcrSubmissionDtos.DoctorCallDetails(
-                        r.id, r.doctorId, r.doctorName, r.specialty, r.callType,
-                        productsByCall.getOrDefault(r.id, List.of())
+                        r.id(),
+                        r.doctorId(),
+                        r.doctorName(),
+                        r.specialty(),
+                        r.callType(),
+                        r.remark(),
+                        productsByCall.getOrDefault(r.id(), List.<DcrSubmissionDtos.ProductItem>of())
                 ))
                 .toList();
     }
 
     private List<DcrSubmissionDtos.MissedDoctorDetails> loadMissedDoctors(long submissionId) {
-        return jdbc.query("""
-            SELECT
-              md.id,
-              d.id AS doctor_id,
-              d.name AS doctor_name,
-              d.specialty,
-              md.reason
-            FROM missed_doctors md
-            JOIN doctors d ON d.id = md.doctor_id
-            WHERE md.submission_id = ?
-            ORDER BY md.id
-        """, (rs, i) -> new DcrSubmissionDtos.MissedDoctorDetails(
-                rs.getLong("id"),
-                rs.getLong("doctor_id"),
-                rs.getString("doctor_name"),
-                rs.getString("specialty"),
-                rs.getString("reason")
-        ), submissionId);
-    }
+    return jdbc.query("""
+        SELECT
+          md.id,
+          d.id AS doctor_id,
+          d.name AS doctor_name,
+          d.specialty,
+          md.reason,
+          md.remark
+        FROM missed_doctors md
+        JOIN doctors d ON d.id = md.doctor_id
+        WHERE md.submission_id = ?
+        ORDER BY md.id
+    """, (rs, i) -> new DcrSubmissionDtos.MissedDoctorDetails(
+            rs.getLong("id"),
+            rs.getLong("doctor_id"),
+            rs.getString("doctor_name"),
+            rs.getString("specialty"),
+            rs.getString("reason"),
+            rs.getString("remark")
+    ), submissionId);
+}
 
     private record SubmissionRow(
             long id,
