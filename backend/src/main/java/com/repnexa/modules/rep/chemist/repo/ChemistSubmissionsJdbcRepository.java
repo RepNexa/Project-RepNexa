@@ -3,6 +3,11 @@ package com.repnexa.modules.rep.chemist.repo;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.repnexa.modules.rep.chemist.dto.ChemistSubmissionListDtos;
+import org.springframework.jdbc.core.RowMapper;
+
+import java.util.List;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +59,27 @@ public class ChemistSubmissionsJdbcRepository {
             ps.setLong(2, f.productId());
             ps.setString(3, f.status());
         });
+    }
+
+    public List<ChemistSubmissionListDtos.ChemistSubmissionRow> listByRepUser(long repUserId, int limit) {
+        int lim = Math.max(1, Math.min(limit, 200));
+
+        String sql = """
+            SELECT s.id, a.route_id, s.visit_date
+            FROM chemist_report_submissions s
+            JOIN rep_route_assignments a ON a.id = s.rep_route_assignment_id
+            WHERE s.rep_user_id = ?
+            ORDER BY s.visit_date DESC, s.id DESC
+            LIMIT ?
+            """;
+
+        RowMapper<ChemistSubmissionListDtos.ChemistSubmissionRow> rm = (rs, rowNum) -> new ChemistSubmissionListDtos.ChemistSubmissionRow(
+                rs.getLong("id"),
+                rs.getLong("route_id"),
+                rs.getDate("visit_date").toLocalDate()
+        );
+
+        return jdbc.query(sql, rm, repUserId, lim);
     }
 
     public record StockFlagRow(long productId, String status) {}

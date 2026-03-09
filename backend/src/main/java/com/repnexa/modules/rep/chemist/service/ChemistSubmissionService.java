@@ -9,6 +9,12 @@ import com.repnexa.modules.rep.shared.RepScopeJdbcRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.repnexa.modules.rep.chemist.dto.ChemistSubmissionListDtos;
+import com.repnexa.modules.auth.security.RepnexaUserDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
+
 import java.time.LocalDate;
 import java.util.*;
 
@@ -153,4 +159,16 @@ public class ChemistSubmissionService {
         for (ApiFieldError e : in) m.put(e.field() + "|" + e.message(), e);
         return new ArrayList<>(m.values());
     }
+
+    public List<ChemistSubmissionListDtos.ChemistSubmissionRow> listMySubmissions(int limit) {
+        long repUserId = currentActorId();
+        return repo.listByRepUser(repUserId, limit);
+    }
+
+    private long currentActorId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof RepnexaUserDetails u) return u.id();
+        throw new IllegalStateException("Expected RepnexaUserDetails principal");
+    }
+
 }

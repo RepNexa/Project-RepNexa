@@ -1,5 +1,11 @@
 package com.repnexa.modules.rep.expense.service;
 
+import com.repnexa.modules.rep.expense.dto.MileageListDtos;
+import com.repnexa.modules.auth.security.RepnexaUserDetails;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
+
 import com.repnexa.common.api.ApiException;
 import com.repnexa.common.api.ApiFieldError;
 import com.repnexa.modules.auth.security.RepnexaUserDetails;
@@ -21,6 +27,17 @@ public class MileageEntryService {
     public MileageEntryService(RepScopeJdbcRepository scope, MileageEntriesJdbcRepository repo) {
         this.scope = scope;
         this.repo = repo;
+    }
+
+    public List<MileageListDtos.MileageEntryRow> listMyEntries(int limit) {
+        long repUserId = currentActorId();
+        return repo.listByRepUser(repUserId, limit);
+    }
+
+    private long currentActorId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof RepnexaUserDetails u) return u.id();
+        throw new IllegalStateException("Expected RepnexaUserDetails principal");
     }
 
     @Transactional

@@ -1,5 +1,11 @@
 package com.repnexa.modules.rep.expense.controller;
 
+import com.repnexa.modules.rep.expense.dto.MileageListDtos;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+
 import com.repnexa.modules.auth.security.RepnexaUserDetails;
 import com.repnexa.modules.rep.expense.dto.MileageDtos;
 import com.repnexa.modules.rep.expense.service.MileageEntryService;
@@ -14,6 +20,11 @@ public class RepMileageEntriesController {
 
     public RepMileageEntriesController(MileageEntryService svc) {
         this.svc = svc;
+    }
+
+    @GetMapping
+    public List<MileageListDtos.MileageEntryRow> list(@RequestParam(defaultValue = "50") int limit) {
+        return svc.listMyEntries(limit);
     }
 
     @PostMapping
