@@ -1,5 +1,9 @@
 package com.repnexa.modules.rep.expense.repo;
 
+import com.repnexa.modules.rep.expense.dto.MileageListDtos;
+import org.springframework.jdbc.core.RowMapper;
+import java.util.List;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -29,5 +33,26 @@ public class MileageEntriesJdbcRepository {
             VALUES (?, ?, ?, ?, ?)
             RETURNING id
         """, Long.class, repUserId, repRouteAssignmentId, routeId, entryDate, km);
+    }
+
+    public List<MileageListDtos.MileageEntryRow> listByRepUser(long repUserId, int limit) {
+        int lim = Math.max(1, Math.min(limit, 200));
+
+        String sql = """
+            SELECT id, route_id, entry_date, km
+            FROM mileage_entries
+            WHERE rep_user_id = ?
+            ORDER BY entry_date DESC, id DESC
+            LIMIT ?
+            """;
+
+        RowMapper<MileageListDtos.MileageEntryRow> rm = (rs, rowNum) -> new MileageListDtos.MileageEntryRow(
+                rs.getLong("id"),
+                rs.getLong("route_id"),
+                rs.getDate("entry_date").toLocalDate(),
+                rs.getBigDecimal("km")
+        );
+
+        return jdbc.query(sql, rm, repUserId, lim);
     }
 }
