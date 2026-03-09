@@ -195,7 +195,7 @@ class DcrSubmissionIntegrationTest {
     @Test
     void mr_cannot_submit_with_someone_elses_repRouteAssignmentId() throws Exception {
         // Create another MR directly (test-only) and assign them a route; logged-in MR must not use that assignment id.
-        String otherMr = "mr2@repnexa.local";
+        String otherMr = "mr2+" + UUID.randomUUID() + "@repnexa.local";
         String hash = passwordEncoder.encode("MR2@1234");
 
         jdbc.update("""
