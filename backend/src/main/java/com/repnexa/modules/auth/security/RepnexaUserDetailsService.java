@@ -1,10 +1,11 @@
 package com.repnexa.modules.auth.security;
 
-import com.repnexa.modules.auth.repo.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import com.repnexa.modules.auth.repo.UserRepository;
 
 @Service
 public class RepnexaUserDetailsService implements UserDetailsService {
