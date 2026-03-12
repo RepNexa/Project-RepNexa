@@ -1,7 +1,7 @@
 "use client";
 
-import { AuthGuard } from "@/src/features/auth/components/AuthGuard";
+import AppShell from "@/src/features/shared/components/legacy/AppShell";
 
 export default function RepLayout({ children }: { children: React.ReactNode }) {
-  return <AuthGuard allowedRoles={["MR"]}>{children}</AuthGuard>;
+  return <AppShell allowedRoles={["MR"]}>{children}</AppShell>;
 }
