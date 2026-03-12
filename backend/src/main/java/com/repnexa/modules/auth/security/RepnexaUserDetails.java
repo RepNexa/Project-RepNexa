@@ -1,12 +1,13 @@
 package com.repnexa.modules.auth.security;
 
-import com.repnexa.modules.auth.domain.UserRole;
+import java.util.Collection;
+import java.util.List;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.List;
+import com.repnexa.modules.auth.domain.UserRole;
 
 public record RepnexaUserDetails(
         Long id,
