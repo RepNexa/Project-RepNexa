@@ -8,6 +8,7 @@ import {
   patchProduct,
   type Product,
 } from "@/src/features/adminMaster/api";
+import { useRegisterCsvPageExport } from "@/src/features/shared/exports/useCsvPageExport";
 
 type ProductRow = Product & {
   // future fields (prototype) - safe even if backend doesn't send yet
@@ -92,6 +93,11 @@ function Card(props: { children: React.ReactNode; className?: string }) {
 }
 
 export default function AdminProductsPage() {
+  useRegisterCsvPageExport({
+    label: "Admin – Products",
+    url: "/api/v1/admin/products.csv",
+    fallbackFilename: "admin-products.csv",
+  });
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [q, setQ] = useState("");
   const [priority, setPriority] = useState("ALL");

@@ -10,6 +10,7 @@ import {
   type Chemist,
   type Route,
 } from "@/src/features/adminMaster/api";
+import { useRegisterCsvPageExport } from "@/src/features/shared/exports/useCsvPageExport";
 
 type ChemistRow = Chemist & {
   territory?: string | null;
@@ -93,6 +94,11 @@ function Card(props: { children: React.ReactNode; className?: string }) {
 }
 
 export default function ChemistsPage() {
+  useRegisterCsvPageExport({
+    label: "Admin – Chemists",
+    url: "/api/v1/admin/chemists.csv",
+    fallbackFilename: "admin-chemists.csv",
+  });
   const [rows, setRows] = useState<Chemist[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [q, setQ] = useState("");
