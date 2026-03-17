@@ -31,7 +31,8 @@ public class RepAnalyticsController {
   @PostMapping("/rep-details")
   public RepDetailsResponse repDetails(@RequestBody RepDetailsRequest req, Authentication auth) {
     List<Long> routeIds = scopeService.resolveEffectiveRouteIds(auth, req.routeIds(), req.fieldManagerId());
-    DateRange range = DateRange.from(req.period(), clock);
+    // DateRange range = DateRange.from(req.period(), clock);
+    DateRange range = DateRange.from(req.period(), req.dateFrom(), req.dateTo(), clock);
 
     if (req.repUserId() != null) {
       Integer cnt = jdbc.queryForObject(
@@ -192,9 +193,19 @@ public class RepAnalyticsController {
     return new PagedResponse<>(p, s, totalElements, totalPages, items);
   }
 
-  public enum Period { THIS_MONTH, LAST_MONTH }
+  // public enum Period { THIS_MONTH, LAST_MONTH }
+  public enum Period { THIS_MONTH, LAST_MONTH, CUSTOM }
 
-  public record RepDetailsRequest(Period period, List<Long> routeIds, Long fieldManagerId, Long repUserId) {}
+  public record RepDetailsRequest(
+      Period period,
+      LocalDate dateFrom,
+      LocalDate dateTo,
+      List<Long> routeIds,
+      Long fieldManagerId,
+      Long repUserId
+  ) {}
+
+  // public record RepDetailsRequest(Period period, List<Long> routeIds, Long fieldManagerId, Long repUserId) {}
   public record Flags(boolean placeholder) {}
   public record RepRow(long repUserId, String repName, long visitCount, long uniqueDoctors, LocalDate lastVisitDate) {}
   public record RepDetailsResponse(List<RepRow> rows, Flags flags) {}
@@ -221,19 +232,43 @@ public class RepAnalyticsController {
   ) {}
 
   record DateRange(LocalDate dateFrom, LocalDate dateTo) {
-    static DateRange from(Period period, Clock clock) {
+    static DateRange from(
+        Period period,
+        LocalDate dateFrom,
+        LocalDate dateTo,
+        Clock clock
+    ) {
       LocalDate today = LocalDate.now(clock);
       Period p = period == null ? Period.THIS_MONTH : period;
+
+      if (p == Period.CUSTOM) {
+        if (dateFrom != null && dateTo != null) {
+          return normalize(dateFrom, dateTo);
+        }
+        p = Period.THIS_MONTH;
+      }
+
       return switch (p) {
         case THIS_MONTH -> {
           YearMonth ym = YearMonth.from(today);
-          yield new DateRange(ym.atDay(1), ym.atEndOfMonth());
+          yield new DateRange(ym.atDay(1), today);
         }
         case LAST_MONTH -> {
           YearMonth ym = YearMonth.from(today).minusMonths(1);
           yield new DateRange(ym.atDay(1), ym.atEndOfMonth());
         }
+        case CUSTOM -> normalize(dateFrom, dateTo);
       };
+    }
+
+    private static DateRange normalize(LocalDate from, LocalDate to) {
+      if (from == null || to == null) {
+        throw new ApiException(400, "VALIDATION_ERROR", "dateFrom and dateTo are required for CUSTOM period");
+      }
+      if (to.isBefore(from)) {
+        return new DateRange(to, from);
+      }
+      return new DateRange(from, to);
     }
   }
 }
