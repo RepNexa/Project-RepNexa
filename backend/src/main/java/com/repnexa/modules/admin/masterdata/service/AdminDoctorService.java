@@ -28,7 +28,10 @@ public class AdminDoctorService {
                         d.getGrade(),
                         d.getStatus(),
                         d.getDeletedAt() != null,
-                        doctors.findTerritoryNamesForDoctor(d.getId()) // ✅ NEW
+                        doctors.findTerritoryNamesForDoctor(d.getId()),
+                        doctors.findPrimaryRepUsernameForDoctor(d.getId()),
+                        doctors.findSecondaryRepUsernameForDoctor(d.getId()), // ✅ NEW: secondaryRep
+                        d.getUpdatedAt() == null ? null : d.getUpdatedAt().toString() // ✅ lastUpdated
                 ))
                 .toList();
     }
@@ -54,16 +57,20 @@ public class AdminDoctorService {
                 saved.getGrade(),
                 saved.getStatus(),
                 false,
-                List.of() // ✅ no routes yet
-        );
+                List.of(),
+                null,
+                null, // ✅ NEW: secondaryRep (none on create)
+                saved.getUpdatedAt() == null ? null : saved.getUpdatedAt().toString());
     }
 
     @Transactional
     public DoctorDtos.DoctorResponse patch(long id, DoctorDtos.PatchDoctorRequest req) {
         Doctor d = doctors.findById(id)
                 .orElseThrow(() -> ApiException.notFound("DOCTOR_NOT_FOUND", "Doctor not found"));
-        if (d.getDeletedAt() != null)
+
+        if (d.getDeletedAt() != null) {
             throw ApiException.conflict("DOCTOR_DELETED", "Doctor is deleted");
+        }
 
         if (req != null) {
             if (!isBlank(req.name()))
@@ -87,8 +94,10 @@ public class AdminDoctorService {
                 saved.getGrade(),
                 saved.getStatus(),
                 saved.getDeletedAt() != null,
-                doctors.findTerritoryNamesForDoctor(saved.getId()) // ✅ NEW (updated locations)
-        );
+                doctors.findTerritoryNamesForDoctor(saved.getId()),
+                doctors.findPrimaryRepUsernameForDoctor(saved.getId()),
+                doctors.findSecondaryRepUsernameForDoctor(saved.getId()), // ✅ NEW
+                saved.getUpdatedAt() == null ? null : saved.getUpdatedAt().toString());
     }
 
     private static boolean isBlank(String s) {
@@ -106,6 +115,7 @@ public class AdminDoctorService {
         String g = trimToNull(grade);
         if (g == null)
             return null;
+
         String u = g.toUpperCase();
         if (!u.equals("A") && !u.equals("B") && !u.equals("C")) {
             throw ApiException.badRequest("VALIDATION_ERROR", "grade must be A, B, C or null");
@@ -117,6 +127,7 @@ public class AdminDoctorService {
         String s = trimToNull(status);
         if (s == null)
             return "ACTIVE";
+
         String u = s.toUpperCase();
         if (!u.equals("ACTIVE") && !u.equals("RETIRED")) {
             throw ApiException.badRequest("VALIDATION_ERROR", "status must be ACTIVE or RETIRED");
