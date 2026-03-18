@@ -14,7 +14,10 @@ public final class DoctorDtos {
             String grade,
             String status,
             boolean deleted,
-            List<String> locations) {
+            List<String> locations,
+            String primaryRep,
+            String secondaryRep,
+            String lastUpdated) {
     }
 
     public record CreateDoctorRequest(String name, String specialty, String grade, String status) {

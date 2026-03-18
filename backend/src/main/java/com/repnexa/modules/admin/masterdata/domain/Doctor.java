@@ -72,6 +72,11 @@ public class Doctor {
         return deletedAt;
     }
 
+    // add this getter
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -91,4 +96,5 @@ public class Doctor {
     public void softDeleteNow() {
         this.deletedAt = OffsetDateTime.now();
     }
+
 }
