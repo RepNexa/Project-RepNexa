@@ -10,7 +10,6 @@ import { DrilldownFilterBar } from "@/src/features/hoDrilldowns/common/FilterBar
 import {
   ApiErrorBanner,
   EmptyCard,
-  RawJson,
   SkeletonBox,
 } from "@/src/features/hoDrilldowns/common/UiParts";
 import {
@@ -28,10 +27,7 @@ import {
 } from "@/src/features/hoDrilldowns/common/url";
 import { useCachedTypeahead } from "@/src/features/hoDrilldowns/common/typeahead";
 import { doctorDetails, doctorVisitLog, lookupDoctors } from "./api";
-import {
-  MiniHBarChart,
-  MiniLineChart,
-} from "@/src/features/hoDrilldowns/common/MiniCharts";
+import { MiniLineChart } from "@/src/features/hoDrilldowns/common/MiniCharts";
 
 function isApiError(e: any): e is ApiError {
   return (
@@ -59,14 +55,6 @@ function pickStr(obj: any, keys: string[]): string | null {
   for (const k of keys) {
     const v = obj?.[k];
     if (typeof v === "string" && v.trim()) return v;
-  }
-  return null;
-}
-
-function pickNum(obj: any, keys: string[]): number | null {
-  for (const k of keys) {
-    const v = obj?.[k];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
   }
   return null;
 }
@@ -99,7 +87,6 @@ async function fetchAllDoctorVisitLog(args: {
   pageSize?: number;
   maxPages?: number;
 }): Promise<{ total: number; items: any[] }> {
-  // Hard cap to avoid VALIDATION_ERROR from backend paging validators.
   const size = Math.min(args.pageSize ?? 50, 50);
   const maxPages = args.maxPages ?? 40;
 
@@ -134,6 +121,264 @@ async function fetchAllDoctorVisitLog(args: {
   return { total: totalElements, items: all };
 }
 
+function pageCard(extra?: string) {
+  return [
+    "rounded-[28px] border border-zinc-200/80 bg-white shadow-sm shadow-zinc-200/40",
+    extra ?? "",
+  ].join(" ");
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+  className = "",
+}: {
+  title?: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={pageCard(`p-5 md:p-6 ${className}`)}>
+      {title ? (
+        <div className="mb-4">
+          <div className="text-[1.05rem] font-semibold tracking-tight text-zinc-900">
+            {title}
+          </div>
+          {subtitle ? (
+            <div className="mt-1 text-sm leading-6 text-zinc-500">{subtitle}</div>
+          ) : null}
+        </div>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+function EmptySelectionState({
+  title,
+  body,
+  accentLabel,
+  accentGlyph,
+  tiles,
+}: {
+  title: string;
+  body: string;
+  accentLabel: string;
+  accentGlyph: string;
+  tiles: Array<{ title: string; body: string }>;
+}) {
+  return (
+    <div className={pageCard("p-6 md:p-8")}>
+      <div className="rounded-[24px] border border-dashed border-zinc-200 bg-[linear-gradient(180deg,rgba(250,250,250,0.95),rgba(244,244,245,0.7))] px-6 py-10 md:px-10 md:py-12">
+        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl border border-violet-200 bg-violet-50 text-2xl shadow-sm">
+            {accentGlyph}
+          </div>
+
+          <div className="mt-4 inline-flex items-center rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+            {accentLabel}
+          </div>
+
+          <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-950">
+            {title}
+          </h2>
+
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600 md:text-base">
+            {body}
+          </p>
+
+          <div className="mt-8 grid w-full grid-cols-1 gap-4 md:grid-cols-3">
+            {tiles.map((tile) => (
+              <div
+                key={tile.title}
+                className="rounded-2xl border border-zinc-200/80 bg-white/85 px-5 py-5 text-left shadow-sm shadow-zinc-200/30"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  {tile.title}
+                </div>
+                <div className="mt-3 text-sm leading-6 text-zinc-600">
+                  {tile.body}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  helper,
+  helperTone = "default",
+}: {
+  label: string;
+  value: React.ReactNode;
+  helper?: React.ReactNode;
+  helperTone?: "default" | "warning";
+}) {
+  return (
+    <div className={pageCard("relative h-full overflow-hidden p-5")}>
+      <div className="absolute inset-x-0 top-0 h-1 bg-violet-500/80" />
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-4 break-words text-[2rem] font-semibold leading-none tracking-tight text-zinc-950">
+        {value}
+      </div>
+      <div
+        className={`mt-4 text-sm ${
+          helperTone === "warning" ? "text-amber-600" : "text-zinc-500"
+        }`}
+      >
+        {helper ?? "—"}
+      </div>
+    </div>
+  );
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200/80 bg-white">
+      {children}
+    </div>
+  );
+}
+
+function TableHeadCell({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 ${className}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function TableCell({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <td
+      className={`px-4 py-3.5 align-top break-words text-zinc-700 ${className}`}
+    >
+      {children}
+    </td>
+  );
+}
+
+function DataTableCard({
+  title,
+  subtitle,
+  columns,
+  rows,
+  emptyText,
+  expanded,
+  onToggleExpanded,
+  tableClassName = "",
+  colGroup,
+}: {
+  title: string;
+  subtitle?: string;
+  columns: Array<{ key: string; label: string; className?: string }>;
+  rows: Array<Record<string, React.ReactNode>>;
+  emptyText: string;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  tableClassName?: string;
+  colGroup?: React.ReactNode;
+}) {
+  const visibleRows = expanded ? rows : rows.slice(0, 5);
+  const canExpand = rows.length > 5;
+
+  return (
+    <SectionCard title={title} subtitle={subtitle}>
+      <TableShell>
+        <table className={`w-full text-sm ${tableClassName}`}>
+          {colGroup}
+          <thead className="bg-zinc-50/90">
+            <tr>
+              {columns.map((col) => (
+                <TableHeadCell key={col.key} className={col.className ?? ""}>
+                  {col.label}
+                </TableHeadCell>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100 bg-white">
+            {visibleRows.length > 0 ? (
+              visibleRows.map((row, idx) => (
+                <tr
+                  key={String(row.__key ?? idx)}
+                  className="align-top transition hover:bg-zinc-50/60"
+                >
+                  {columns.map((col) => (
+                    <TableCell key={col.key} className={col.className ?? ""}>
+                      {row[col.key]}
+                    </TableCell>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-6 text-sm text-zinc-500"
+                >
+                  {emptyText}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </TableShell>
+
+      {canExpand ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={onToggleExpanded}
+            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3.5 py-1.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+          >
+            {expanded ? "Show less" : "See more"}
+          </button>
+        </div>
+      ) : null}
+    </SectionCard>
+  );
+}
+
+function DetailStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-100 bg-zinc-50/60 p-4">
+      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-1 break-words text-zinc-800">{value}</div>
+    </div>
+  );
+}
+
 export function HoDoctorsPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -148,6 +393,7 @@ export function HoDoctorsPage() {
     () => ({ period, dateFrom, dateTo }),
     [period, dateFrom, dateTo],
   );
+
   const filters = React.useMemo(
     () => normalizeDrilldownFilters(rawFilters),
     [rawFilters],
@@ -160,6 +406,18 @@ export function HoDoctorsPage() {
 
   const [notFoundMsg, setNotFoundMsg] = React.useState<string | null>(null);
   const [territory, setTerritory] = React.useState<string>("ALL");
+  const [searchOpen, setSearchOpen] = React.useState<boolean>(!doctorId);
+  const [showAllProducts, setShowAllProducts] = React.useState<boolean>(false);
+  const [showAllVisits, setShowAllVisits] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    setSearchOpen(!doctorId);
+  }, [doctorId]);
+
+  React.useEffect(() => {
+    setShowAllProducts(false);
+    setShowAllVisits(false);
+  }, [doctorId, territory, period, dateFrom, dateTo]);
 
   const detailsQ = useQuery({
     queryKey: ["hoDoctorDetails", doctorId ?? "none", stableStringify(filters)],
@@ -168,7 +426,6 @@ export function HoDoctorsPage() {
     staleTime: 120_000,
   });
 
-  // 404 => show not found and clear selection
   React.useEffect(() => {
     if (!doctorId) return;
     const err = detailsQ.error as any;
@@ -185,7 +442,6 @@ export function HoDoctorsPage() {
     queryKey: [
       "hoDoctorVisitLogAll",
       doctorId ?? "none",
-      // MUST include period/range or THIS_MONTH/LAST_MONTH will share the same key.
       filters.period,
       range?.dateFrom ?? "",
       range?.dateTo ?? "",
@@ -216,6 +472,7 @@ export function HoDoctorsPage() {
   const onSelectDoctor = (id: number) => {
     setNotFoundMsg(null);
     setTerritory("ALL");
+    setSearchOpen(false);
     router.replace(
       buildUrlWithParams(pathname, sp, {
         doctorId: id,
@@ -246,6 +503,7 @@ export function HoDoctorsPage() {
   const allVisits = React.useMemo(() => {
     return logQ.data?.items ?? [];
   }, [logQ.data]);
+
   const filteredVisits =
     territory === "ALL"
       ? allVisits
@@ -256,7 +514,6 @@ export function HoDoctorsPage() {
         });
 
   const visitTrend = React.useMemo(() => {
-    // group by ISO week (better than monthly for sparse seed data)
     const m = new Map<string, number>();
     for (const it of filteredVisits) {
       const d =
@@ -299,7 +556,6 @@ export function HoDoctorsPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [allVisits]);
 
-  // Prefer server summary count (doctor-details) for KPI accuracy even if visit-log fails.
   const summaryVisitCount =
     typeof detailsRow?.visitCount === "number" ? detailsRow.visitCount : null;
   const totalVisits =
@@ -361,403 +617,451 @@ export function HoDoctorsPage() {
         }
       }
     }
-    return Array.from(m.values())
-      .sort((a, b) => b.calls - a.calls || a.code.localeCompare(b.code))
-      .slice(0, 30);
+    return Array.from(m.values()).sort(
+      (a, b) => b.calls - a.calls || a.code.localeCompare(b.code),
+    );
   }, [filteredVisits]);
 
+  const sortedVisits = React.useMemo(() => {
+    return filteredVisits
+      .slice()
+      .sort((a: any, b: any) => {
+        const ad =
+          toIsoDateOrNull(pickStr(a, ["callDate", "date", "call_date"])) ?? "";
+        const bd =
+          toIsoDateOrNull(pickStr(b, ["callDate", "date", "call_date"])) ?? "";
+        return bd.localeCompare(ad);
+      });
+  }, [filteredVisits]);
+
+  const productTableRows = React.useMemo(() => {
+    return productRows.map((r) => ({
+      __key: r.code,
+      product: (
+        <span className="block break-words font-mono text-[13px] text-zinc-800">
+          {r.code}
+        </span>
+      ),
+      calls: r.calls,
+      lastDetailed: r.last || "—",
+    }));
+  }, [productRows]);
+
+  const visitTableRows = React.useMemo(() => {
+    return sortedVisits.map((it: any, idx: number) => {
+      const d =
+        toIsoDateOrNull(pickStr(it, ["callDate", "date", "call_date"])) ?? "—";
+      const rep = pickStr(it, ["repUsername", "repName", "rep"]) ?? "—";
+      const terr =
+        pickStr(it, ["routeName", "territory", "territoryName"]) ?? "—";
+      const codesRaw =
+        (Array.isArray(it?.productCodes) && it.productCodes) ||
+        (Array.isArray(it?.productsDetailed) && it.productsDetailed) ||
+        (Array.isArray(it?.products) && it.products) ||
+        [];
+      const codes = codesRaw
+        .map((x: any) => String(x ?? "").trim())
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        __key: String(it?.callId ?? idx),
+        date: d,
+        rep,
+        territory: terr,
+        productsDetailed: codes || "—",
+        remark: <span className="text-zinc-400">—</span>,
+      };
+    });
+  }, [sortedVisits]);
+
+  const productMixRows = React.useMemo(() => {
+    const topRows = productMix.slice(0, 8);
+    const maxValue = Math.max(1, ...topRows.map((r) => r.value));
+
+    return topRows.map((row) => ({
+      ...row,
+      widthPct: `${Math.max(6, (row.value / maxValue) * 100)}%`,
+    }));
+  }, [productMix]);
+
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Doctors</h1>
-          <div className="text-sm text-zinc-600">
-            Search and drill into doctor analytics (Milestone 7). Backend scope
-            applies.
+    <div className="w-full bg-[#f6f7fb]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-900">
+              Doctors
+            </h1>
+            <div className="mt-1 text-sm text-zinc-600">
+              Search and drill into doctor analytics with a unified dashboard
+              layout.
+            </div>
           </div>
+
+          <Link
+            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+            href="/ho"
+          >
+            Back
+          </Link>
         </div>
-        <Link
-          className="rounded border px-3 py-2 text-sm hover:bg-zinc-50"
-          href="/ho"
-        >
-          Back
-        </Link>
-      </div>
 
-      {err && <ApiErrorBanner err={err} />}
+        {err && <ApiErrorBanner err={err} />}
 
-      {notFoundMsg ? (
-        <EmptyCard
-          title={notFoundMsg}
-          body="Try searching again or enter another ID."
-        />
-      ) : null}
+        {notFoundMsg ? (
+          <div className="mb-4">
+            <EmptyCard
+              title={notFoundMsg}
+              body="Try searching again or enter another ID."
+            />
+          </div>
+        ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Search</div>
-          <SimpleTypeahead<number>
-            label="Doctor"
-            placeholder="Type a name…"
-            fetchOptions={fetchOptions}
-            onSelect={(opt) => onSelectDoctor(opt.value)}
-          />
-          {lookupErr ? (
-            <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-              Lookup unavailable:{" "}
-              <span className="font-mono">{lookupErr.status}</span>{" "}
-              <span className="font-mono">{lookupErr.code}</span>. Use the ID
-              input below.
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.9fr]">
+          <SectionCard
+            title="Search"
+            subtitle="Find a doctor by name or enter a direct doctor ID."
+          >
+            {!doctorId || searchOpen ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                  <SimpleTypeahead<number>
+                    key={
+                      searchOpen ? "doctor-search-open" : "doctor-search-closed"
+                    }
+                    label="Doctor"
+                    placeholder="Type a name…"
+                    fetchOptions={fetchOptions}
+                    onSelect={(opt) => onSelectDoctor(opt.value)}
+                  />
+                </div>
+
+                {lookupErr ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                    Lookup unavailable:{" "}
+                    <span className="font-mono">{lookupErr.status}</span>{" "}
+                    <span className="font-mono">{lookupErr.code}</span>.
+                  </div>
+                ) : null}
+
+                <div>
+                  <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                    Or enter doctor ID
+                  </div>
+                  <input
+                    className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-zinc-300 focus:ring-2 focus:ring-zinc-100"
+                    type="number"
+                    min={1}
+                    value={doctorId ?? ""}
+                    placeholder="e.g. 12"
+                    onChange={(e) => {
+                      const v = e.target.value ? Number(e.target.value) : null;
+                      if (!v) {
+                        router.replace(
+                          buildUrlWithParams(pathname, sp, {
+                            doctorId: null,
+                            page: 0,
+                          }),
+                        );
+                      } else {
+                        onSelectDoctor(v);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                    Selected doctor
+                  </div>
+                  <div className="mt-1 truncate text-lg font-semibold text-zinc-900">
+                    {doctorName}
+                  </div>
+                  <div className="mt-1 text-sm text-zinc-500">ID #{doctorId}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                >
+                  Change
+                </button>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="Filters"
+            subtitle="Keep the existing period and date logic unchanged."
+          >
+            <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+              <DrilldownFilterBar
+                value={rawFilters}
+                onChange={onFilters}
+                isFetching={detailsQ.isFetching}
+              />
+            </div>
+          </SectionCard>
+        </div>
+
+        <div className="mt-5">
+          {detailsQ.isLoading && doctorId ? (
+            <div className={pageCard("p-6")}>
+              <SkeletonBox lines={3} />
             </div>
           ) : null}
-          <div className="mt-3">
-            <div className="text-xs text-zinc-600">Or enter Doctor ID</div>
-            <input
-              className="mt-1 h-10 w-full rounded border px-2"
-              type="number"
-              min={1}
-              value={doctorId ?? ""}
-              placeholder="e.g. 12"
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                if (!v)
-                  router.replace(
-                    buildUrlWithParams(pathname, sp, {
-                      doctorId: null,
-                      page: 0,
-                    }),
-                  );
-                else onSelectDoctor(v);
-              }}
+
+          {!doctorId ? (
+            <EmptySelectionState
+              accentGlyph="D"
+              accentLabel="Doctor detail"
+              title="No doctor selected"
+              body="Search for a doctor by name or enter a doctor ID to view profile details, visit trends, and product activity for the selected doctor."
+              tiles={[
+                {
+                  title: "Search",
+                  body: "Find a doctor quickly by typing a name into the lookup field above.",
+                },
+                {
+                  title: "Filter",
+                  body: "Adjust the current period or switch to a custom date range before drilling down.",
+                },
+                {
+                  title: "Analyze",
+                  body: "Review profile data, visit history, and promoted product activity once a doctor is selected.",
+                },
+              ]}
             />
-            <div className="mt-2 text-xs text-zinc-500">
-              If lookups return 500 in your backend, the typeahead will show no
-              options; ID input still works.
-            </div>
-          </div>
-        </div>
+          ) : null}
 
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Filters</div>
-          <DrilldownFilterBar
-            value={rawFilters}
-            onChange={onFilters}
-            isFetching={detailsQ.isFetching}
-          />
-        </div>
-      </div>
-
-      <div className="mt-4">
-        {detailsQ.isLoading && doctorId ? <SkeletonBox lines={3} /> : null}
-        {!doctorId ? (
-          <EmptyCard
-            title="No doctor selected"
-            body="Use the search box or enter a doctor ID."
-          />
-        ) : null}
-
-        {doctorId ? (
-          <>
-            {/* KPI cards */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Doctor</div>
-                <div className="mt-1 text-2xl font-semibold">{doctorName}</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  ID <span className="font-mono">#{doctorId}</span>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Total Visits</div>
-                <div className="mt-1 text-3xl font-semibold">{totalVisits}</div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  In selected window (filtered by territory if set).
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Avg Visits / Month</div>
-                <div className="mt-1 text-3xl font-semibold">
-                  {avgPerMonth ?? "—"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Target: 4 / month (prototype)
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Last Visit</div>
-                <div className="mt-1 text-3xl font-semibold">
-                  {toIsoDateOrNull(
-                    pickStr(lastVisit, ["callDate", "date", "call_date"]),
-                  ) ?? "—"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  {pickStr(lastVisit, ["repUsername", "repName", "rep"]) ? (
+          {doctorId ? (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <KpiCard
+                  label="Doctor"
+                  value={doctorName}
+                  helper={
                     <>
-                      By {pickStr(lastVisit, ["repUsername", "repName", "rep"])}
+                      ID <span className="font-mono">#{doctorId}</span>
                     </>
-                  ) : (
-                    " "
-                  )}
-                </div>
-              </div>
-            </div>
+                  }
+                />
 
-            {/* Charts (MVP) */}
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="mb-2 font-semibold">Visits Over Time</div>
-                <div className="text-sm text-zinc-600">
-                  Based on visit log in selected window.
-                </div>
-                <div className="mt-3">
-                  {logQ.isLoading ? (
-                    <SkeletonBox lines={6} />
-                  ) : visitTrend.length === 0 ? (
-                    <EmptyCard title="No visits in window" />
-                  ) : (
-                    <MiniLineChart points={visitTrend} />
-                  )}
-                </div>
+                <KpiCard
+                  label="Total Visits"
+                  value={totalVisits}
+                  helper={
+                    territory !== "ALL"
+                      ? "In selected window for selected territory."
+                      : "In selected window across all territories."
+                  }
+                />
+
+                <KpiCard
+                  label="Avg Visits / Month"
+                  value={avgPerMonth ?? "—"}
+                  helper="Target: 4 / month"
+                  helperTone="warning"
+                />
+
+                <KpiCard
+                  label="Last Visit"
+                  value={
+                    toIsoDateOrNull(
+                      pickStr(lastVisit, ["callDate", "date", "call_date"]),
+                    ) ??
+                    lastVisitDateFallback ??
+                    "—"
+                  }
+                  helper={
+                    pickStr(lastVisit, ["repUsername", "repName", "rep"])
+                      ? `By ${pickStr(lastVisit, ["repUsername", "repName", "rep"])}`
+                      : "—"
+                  }
+                />
               </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="mb-2 font-semibold">Product Mix</div>
-                <div className="text-sm text-zinc-600">
-                  Unique products per call (MVP approximation).
-                </div>
-                <div className="mt-3">
+
+              <div className="mt-4">
+                <SectionCard
+                  title="Doctor Profile"
+                  subtitle="Basic data from the selected doctor"
+                >
+                  <div className="space-y-4 text-sm">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="font-medium text-zinc-600">
+                        Territory filter
+                      </div>
+                      <div className="w-full sm:w-56">
+                        <select
+                          className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-zinc-300 focus:ring-2 focus:ring-zinc-100"
+                          value={territory}
+                          onChange={(e) => setTerritory(e.target.value)}
+                        >
+                          <option value="ALL">All territories</option>
+                          {territories.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <DetailStat
+                        label="Assigned reps"
+                        value={
+                          Array.from(
+                            new Set(
+                              filteredVisits
+                                .map((x: any) =>
+                                  pickStr(x, ["repUsername", "repName", "rep"]),
+                                )
+                                .filter(Boolean) as string[],
+                            ),
+                          )
+                            .slice(0, 6)
+                            .join(", ") || "—"
+                        }
+                      />
+
+                      <DetailStat
+                        label="Specialty"
+                        value={pickStr(detailsRow, ["specialty"]) ?? "—"}
+                      />
+
+                      <DetailStat
+                        label="Grade"
+                        value={pickStr(detailsRow, ["grade"]) ?? "—"}
+                      />
+
+                      <DetailStat
+                        label="Status"
+                        value={pickStr(detailsRow, ["status"]) ?? "—"}
+                      />
+                    </div>
+                  </div>
+                </SectionCard>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <SectionCard
+                  title="Visits Over Time"
+                  subtitle="Based on visit log in the selected window"
+                >
+                  <div className="mt-1 overflow-hidden rounded-2xl">
+                    {logQ.isLoading ? (
+                      <SkeletonBox lines={6} />
+                    ) : visitTrend.length === 0 ? (
+                      <EmptyCard title="No visits in window" />
+                    ) : (
+                      <MiniLineChart points={visitTrend} />
+                    )}
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Product Mix" subtitle="Unique products per call">
                   {logQ.isLoading ? (
                     <SkeletonBox lines={6} />
-                  ) : productMix.length === 0 ? (
+                  ) : productMixRows.length === 0 ? (
                     <EmptyCard title="No products in window" />
                   ) : (
-                    <MiniHBarChart rows={productMix} maxRows={8} />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Panels */}
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">Doctor Profile</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Basic data (best-effort from current backend response).
-                </div>
-
-                <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Territory filter</div>
-                    <div className="w-56">
-                      <select
-                        className="h-9 w-full rounded border px-2"
-                        value={territory}
-                        onChange={(e) => setTerritory(e.target.value)}
-                      >
-                        <option value="ALL">All territories</option>
-                        {territories.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Assigned reps</div>
-                    <div className="text-right">
-                      {Array.from(
-                        new Set(
-                          filteredVisits
-                            .map((x: any) =>
-                              pickStr(x, ["repUsername", "repName", "rep"]),
-                            )
-                            .filter(Boolean) as string[],
-                        ),
-                      )
-                        .slice(0, 6)
-                        .join(", ") || "—"}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Specialty</div>
-                    <div className="text-right">
-                      {pickStr(detailsRow, ["specialty"]) ?? "—"}
-                    </div>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Grade</div>
-                    <div className="text-right">
-                      {pickStr(detailsRow, ["grade"]) ?? "—"}
-                    </div>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Status</div>
-                    <div className="text-right">
-                      {pickStr(detailsRow, ["status"]) ?? "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">
-                  Products Promoted to This Doctor
-                </div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Derived from visit log in selected window.
-                </div>
-
-                <div className="mt-3 overflow-auto rounded border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-zinc-50 text-left">
-                      <tr>
-                        <th className="p-2">Product</th>
-                        <th className="p-2">Calls</th>
-                        <th className="p-2">Last Detailed</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {productRows.map((r) => (
-                        <tr key={r.code} className="border-t">
-                          <td className="p-2 font-mono">{r.code}</td>
-                          <td className="p-2">{r.calls}</td>
-                          <td className="p-2">{r.last || "—"}</td>
-                        </tr>
+                    <div className="space-y-4">
+                      {productMixRows.map((row) => (
+                        <div
+                          key={row.label}
+                          className="grid grid-cols-[minmax(0,1fr)_40px] gap-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="mb-1.5 break-words text-xs font-medium uppercase tracking-wide text-zinc-500">
+                              {row.label}
+                            </div>
+                            <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-100">
+                              <div
+                                className="h-full rounded-full bg-violet-600"
+                                style={{ width: row.widthPct }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-end justify-end text-sm font-medium text-zinc-600">
+                            {row.value}
+                          </div>
+                        </div>
                       ))}
-                      {productRows.length === 0 ? (
-                        <tr className="border-t">
-                          <td className="p-2 text-zinc-600" colSpan={3}>
-                            No product detailing found in this window.
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* Visit log */}
-            <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <div className="font-semibold">Visit Log – This Doctor</div>
-              <div className="mt-1 text-sm text-zinc-600">
-                Visits in selected window (newest-first).
+                    </div>
+                  )}
+                </SectionCard>
               </div>
 
-              {logQ.isLoading ? <SkeletonBox lines={8} /> : null}
-              {!logQ.isLoading && logQ.error ? (
-                isApiError(logQ.error) ? (
-                  <ApiErrorBanner err={logQ.error} />
-                ) : (
-                  <EmptyCard title="Failed to load visit log" />
-                )
-              ) : null}
-
-              {!logQ.isLoading && !logQ.error ? (
-                <div className="mt-3 overflow-auto rounded border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-zinc-50 text-left">
-                      <tr>
-                        <th className="p-2">Date</th>
-                        <th className="p-2">Rep</th>
-                        <th className="p-2">Territory</th>
-                        <th className="p-2">Products Detailed</th>
-                        <th className="p-2">Remark</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredVisits
-                        .slice()
-                        .sort((a: any, b: any) => {
-                          const ad =
-                            toIsoDateOrNull(
-                              pickStr(a, ["callDate", "date", "call_date"]),
-                            ) ?? "";
-                          const bd =
-                            toIsoDateOrNull(
-                              pickStr(b, ["callDate", "date", "call_date"]),
-                            ) ?? "";
-                          return bd.localeCompare(ad);
-                        })
-                        .slice(0, 80)
-                        .map((it: any, idx: number) => {
-                          const d =
-                            toIsoDateOrNull(
-                              pickStr(it, ["callDate", "date", "call_date"]),
-                            ) ?? "—";
-                          const rep =
-                            pickStr(it, ["repUsername", "repName", "rep"]) ??
-                            "—";
-                          const terr =
-                            pickStr(it, [
-                              "routeName",
-                              "territory",
-                              "territoryName",
-                            ]) ?? "—";
-                          const codesRaw =
-                            (Array.isArray(it?.productCodes) &&
-                              it.productCodes) ||
-                            (Array.isArray(it?.productsDetailed) &&
-                              it.productsDetailed) ||
-                            (Array.isArray(it?.products) && it.products) ||
-                            [];
-                          const codes = codesRaw
-                            .map((x: any) => String(x ?? "").trim())
-                            .filter(Boolean)
-                            .join(", ");
-                          return (
-                            <tr
-                              key={String(it?.callId ?? idx)}
-                              className="border-t"
-                            >
-                              <td className="p-2">{d}</td>
-                              <td className="p-2">{rep}</td>
-                              <td className="p-2">{terr}</td>
-                              <td className="p-2">{codes || "—"}</td>
-                              <td className="p-2 text-zinc-500">—</td>
-                            </tr>
-                          );
-                        })}
-                      {filteredVisits.length === 0 ? (
-                        <tr className="border-t">
-                          <td className="p-2 text-zinc-600" colSpan={5}>
-                            No visits in this window.
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-
-              <div className="mt-2 text-xs text-zinc-500">
-                Showing up to 80 rows. Loaded rows: {filteredVisits.length}.
+              <div className="mt-4">
+                <DataTableCard
+                  title="Products Promoted to This Doctor"
+                  subtitle="Derived from visit log in the selected window"
+                  columns={[
+                    { key: "product", label: "Product" },
+                    { key: "calls", label: "Calls" },
+                    { key: "lastDetailed", label: "Last Detailed" },
+                  ]}
+                  rows={productTableRows}
+                  emptyText="No product detailing found in this window."
+                  expanded={showAllProducts}
+                  onToggleExpanded={() => setShowAllProducts((v) => !v)}
+                  tableClassName="table-fixed"
+                  colGroup={
+                    <colgroup>
+                      <col className="w-[50%]" />
+                      <col className="w-[20%]" />
+                      <col className="w-[30%]" />
+                    </colgroup>
+                  }
+                />
               </div>
-            </div>
 
-            {/* Debug */}
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-zinc-600">
-                Debug: raw responses
-              </summary>
-              <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded border bg-white p-3">
-                  <div className="mb-2 text-sm font-medium">doctor-details</div>
-                  <RawJson data={detailsQ.data} />
-                </div>
-                <div className="rounded border bg-white p-3">
-                  <div className="mb-2 text-sm font-medium">visit-log</div>
-                  <RawJson data={logQ.data} />
-                </div>
+              <div className="mt-4">
+                {logQ.isLoading ? <SkeletonBox lines={8} /> : null}
+
+                {!logQ.isLoading && logQ.error ? (
+                  isApiError(logQ.error) ? (
+                    <ApiErrorBanner err={logQ.error} />
+                  ) : (
+                    <EmptyCard title="Failed to load visit log" />
+                  )
+                ) : null}
+
+                {!logQ.isLoading && !logQ.error ? (
+                  <DataTableCard
+                    title="Visit Log – This Doctor"
+                    subtitle="Visits in selected window (newest first)"
+                    columns={[
+                      { key: "date", label: "Date" },
+                      { key: "rep", label: "Rep" },
+                      { key: "territory", label: "Territory" },
+                      { key: "productsDetailed", label: "Products Detailed" },
+                      { key: "remark", label: "Remark" },
+                    ]}
+                    rows={visitTableRows}
+                    emptyText="No visits in this window."
+                    expanded={showAllVisits}
+                    onToggleExpanded={() => setShowAllVisits((v) => !v)}
+                    tableClassName="table-fixed"
+                    colGroup={
+                      <colgroup>
+                        <col className="w-[14%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[34%]" />
+                        <col className="w-[16%]" />
+                      </colgroup>
+                    }
+                  />
+                ) : null}
               </div>
-            </details>
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   );
