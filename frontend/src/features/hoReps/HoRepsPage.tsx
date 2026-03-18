@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ApiError } from "@/src/lib/api/types";
 import { SimpleTypeahead } from "@/src/features/shared/components/SimpleTypeahead";
-import { DrilldownFilterBar } from "@/src/features/hoDrilldowns/common/FilterBar";
 import {
   ApiErrorBanner,
   EmptyCard,
@@ -71,12 +70,198 @@ function pickNum(obj: any, keys: string[]): number | null {
   return null;
 }
 
-function daysBetweenInclusive(a: string, b: string): number {
-  const da = new Date(a);
-  const db = new Date(b);
-  const ms = +db - +da;
-  if (!Number.isFinite(ms)) return 1;
-  return Math.max(1, Math.round(ms / 86400000) + 1);
+function formatProfileValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "string") return value.trim() || "—";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const cleaned = value
+      .map((v) => (v == null ? "" : String(v).trim()))
+      .filter(Boolean);
+    return cleaned.length ? cleaned.join(", ") : "—";
+  }
+  return "—";
+}
+
+function card(extra?: string) {
+  return [
+    "rounded-[28px] border border-zinc-200/80 bg-white shadow-sm shadow-zinc-200/40",
+    extra ?? "",
+  ].join(" ");
+}
+
+function statCard(extra?: string) {
+  return card(["relative overflow-hidden p-5 md:p-6", extra ?? ""].join(" "));
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+  className = "",
+}: {
+  title?: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={card(`p-5 md:p-6 ${className}`)}>
+      {title ? (
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-900">
+            {title}
+          </h2>
+          {subtitle ? (
+            <p className="mt-1 text-sm leading-6 text-zinc-500">{subtitle}</p>
+          ) : null}
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  helper,
+  helperTone = "default",
+}: {
+  label: string;
+  value: React.ReactNode;
+  helper?: React.ReactNode;
+  helperTone?: "default" | "warning";
+}) {
+  return (
+    <div className={statCard("h-full")}>
+      <div className="absolute inset-x-0 top-0 h-1 bg-violet-500/80" />
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-4 break-words text-[2rem] font-semibold leading-none tracking-tight text-zinc-950">
+        {value}
+      </div>
+      <div
+        className={`mt-4 text-sm ${
+          helperTone === "warning" ? "text-amber-600" : "text-zinc-500"
+        }`}
+      >
+        {helper ?? "—"}
+      </div>
+    </div>
+  );
+}
+
+function DetailStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 px-4 py-4">
+      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-2 break-words text-sm font-medium text-zinc-900">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function EmptySelectionState({
+  title,
+  body,
+  accentLabel,
+  accentGlyph,
+  tiles,
+}: {
+  title: string;
+  body: string;
+  accentLabel: string;
+  accentGlyph: string;
+  tiles: Array<{ title: string; body: string }>;
+}) {
+  return (
+    <div className={card("p-6 md:p-8")}>
+      <div className="rounded-[24px] border border-dashed border-zinc-200 bg-[linear-gradient(180deg,rgba(250,250,250,0.95),rgba(244,244,245,0.7))] px-6 py-10 md:px-10 md:py-12">
+        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl border border-violet-200 bg-violet-50 text-2xl shadow-sm">
+            {accentGlyph}
+          </div>
+
+          <div className="mt-4 inline-flex items-center rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+            {accentLabel}
+          </div>
+
+          <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-950">
+            {title}
+          </h2>
+
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600 md:text-base">
+            {body}
+          </p>
+
+          <div className="mt-8 grid w-full grid-cols-1 gap-4 md:grid-cols-3">
+            {tiles.map((tile) => (
+              <div
+                key={tile.title}
+                className="rounded-2xl border border-zinc-200/80 bg-white/85 px-5 py-5 text-left shadow-sm shadow-zinc-200/30"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  {tile.title}
+                </div>
+                <div className="mt-3 text-sm leading-6 text-zinc-600">
+                  {tile.body}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[24px] border border-zinc-200/80 bg-white">
+      {children}
+    </div>
+  );
+}
+
+function TableHeadCell({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600 ${className}`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function TableCell({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <td className={`px-4 py-3.5 align-top break-words text-zinc-700 ${className}`}>
+      {children}
+    </td>
+  );
 }
 
 export function HoRepsPage() {
@@ -88,6 +273,7 @@ export function HoRepsPage() {
   const period = parsePeriod(sp.get("period") ?? undefined);
   const dateFrom = readStrParam(sp, "dateFrom");
   const dateTo = readStrParam(sp, "dateTo");
+
   const rawFilters = React.useMemo<DrilldownFilters>(
     () => ({ period, dateFrom, dateTo }),
     [period, dateFrom, dateTo],
@@ -101,7 +287,10 @@ export function HoRepsPage() {
     () => effectiveDateRange(filters),
     [filters.period, filters.dateFrom, filters.dateTo],
   );
+
   const [notFoundMsg, setNotFoundMsg] = React.useState<string | null>(null);
+  const [typeaheadResetKey, setTypeaheadResetKey] = React.useState(0);
+  const [showAllActivityRows, setShowAllActivityRows] = React.useState(false);
 
   const detailsQ = useQuery({
     queryKey: ["hoRepDetails", repId ?? "none", stableStringify(filters)],
@@ -140,6 +329,10 @@ export function HoRepsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailsQ.error]);
 
+  React.useEffect(() => {
+    setShowAllActivityRows(false);
+  }, [repId, filters.period, filters.dateFrom, filters.dateTo]);
+
   const { fetchOptions, lastErr: lookupErr } = useCachedTypeahead({
     keyPrefix: ["hoLookup", "reps"],
     fetcher: lookupReps,
@@ -153,17 +346,35 @@ export function HoRepsPage() {
 
   const onSelect = (id: number) => {
     setNotFoundMsg(null);
+    setTypeaheadResetKey((k) => k + 1);
     router.replace(buildUrlWithParams(pathname, sp, { repId: id }));
   };
 
-  const onFilters = (next: DrilldownFilters) => {
+  const onPeriodChange = (p: DrilldownPeriod) => {
     setNotFoundMsg(null);
     router.replace(
       buildUrlWithParams(pathname, sp, {
-        period: next.period,
-        // Prevent "CUSTOM dates stuck in URL" when switching back to THIS_MONTH/LAST_MONTH.
-        dateFrom: next.period === "CUSTOM" ? (next.dateFrom ?? null) : null,
-        dateTo: next.period === "CUSTOM" ? (next.dateTo ?? null) : null,
+        period: p,
+        dateFrom: p === "CUSTOM" ? (filters.dateFrom ?? null) : null,
+        dateTo: p === "CUSTOM" ? (filters.dateTo ?? null) : null,
+      }),
+    );
+  };
+
+  const onCustomDateFrom = (v: string) => {
+    router.replace(
+      buildUrlWithParams(pathname, sp, {
+        period: "CUSTOM",
+        dateFrom: v || null,
+      }),
+    );
+  };
+
+  const onCustomDateTo = (v: string) => {
+    router.replace(
+      buildUrlWithParams(pathname, sp, {
+        period: "CUSTOM",
+        dateTo: v || null,
       }),
     );
   };
@@ -171,12 +382,12 @@ export function HoRepsPage() {
   const err: ApiError | null = (detailsQ.error as any) || null;
   const activityErr: ApiError | null = (activityQ.error as any) || null;
 
-  const activityItems = React.useMemo(() => {
-    return activityQ.data?.items ?? [];
-  }, [activityQ.data]);
+  const activityItems = React.useMemo(
+    () => activityQ.data?.items ?? [],
+    [activityQ.data],
+  );
 
   const weekly = React.useMemo(() => {
-    // ISO-week aggregation (UTC-stable) so we get multiple points within a month.
     const m = new Map<string, number>();
     for (const it of activityItems) {
       const d = String(it.callDate ?? "");
@@ -202,12 +413,15 @@ export function HoRepsPage() {
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
   }, [activityItems]);
+
   const row0 = pickFirstRow(detailsQ.data);
   const repName =
     pickStr(row0, ["repName", "name", "repUsername", "username", "code"]) ??
     (repId ? `Rep #${repId}` : "Rep");
+
   const totalVisits =
     pickNum(row0, ["visitCount", "totalVisits", "calls", "callCount"]) ?? null;
+
   const lastVisit =
     pickStr(row0, ["lastVisitDate", "lastCallDate", "lastVisit"]) ?? null;
 
@@ -215,246 +429,389 @@ export function HoRepsPage() {
     const df = range?.dateFrom ?? "";
     const dt = range?.dateTo ?? "";
     if (!df || !dt) return null;
+
     const da = new Date(df);
     const db = new Date(dt);
     const ms = +db - +da;
+
     const days = !Number.isFinite(ms)
       ? 1
       : Math.max(1, Math.round(ms / 86400000) + 1);
+
     const months = Math.max(1, days / 30);
     return (activityItems.length / months).toFixed(1);
   }, [range?.dateFrom, range?.dateTo, activityItems.length]);
 
+  const profileFields = React.useMemo(() => {
+    if (!row0 || typeof row0 !== "object") return [];
+
+    const fieldDefs: Array<{ label: string; keys: string[] }> = [
+      { label: "Username", keys: ["repUsername", "username"] },
+      { label: "Code", keys: ["repCode", "code"] },
+      { label: "Name", keys: ["repName", "name"] },
+      { label: "Territory", keys: ["territoryName", "territory", "territoryCode"] },
+      { label: "Route", keys: ["routeName", "route", "routeCode"] },
+      { label: "Area", keys: ["areaName", "area"] },
+      { label: "Manager", keys: ["managerName", "manager", "supervisorName"] },
+      { label: "Grade Focus", keys: ["gradeFocus", "focusGrade"] },
+    ];
+
+    return fieldDefs.map((def) => {
+      for (const key of def.keys) {
+        const value = row0?.[key];
+        const formatted = formatProfileValue(value);
+        if (formatted !== "—") {
+          return { label: def.label, value: formatted };
+        }
+      }
+      return { label: def.label, value: "—" };
+    });
+  }, [row0]);
+
+  const showExpandedSections =
+    typeof repId === "number" && repId > 0 && !detailsQ.isLoading && !detailsQ.error;
+
+  const visibleActivityRows = showAllActivityRows
+    ? activityItems
+    : activityItems.slice(0, 5);
+
+  const hasMoreActivityRows = activityItems.length > 5;
+
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Reps</h1>
-          <div className="text-sm text-zinc-600">
-            Search and drill into rep analytics (Milestone 7). Backend scope
-            applies.
-          </div>
-        </div>
-        <Link
-          className="rounded border px-3 py-2 text-sm hover:bg-zinc-50"
-          href="/ho"
-        >
-          Back
-        </Link>
-      </div>
-
-      {err && <ApiErrorBanner err={err} />}
-      {notFoundMsg ? <EmptyCard title={notFoundMsg} /> : null}
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Search</div>
-          <SimpleTypeahead<number>
-            label="Rep"
-            placeholder="Type a name…"
-            fetchOptions={fetchOptions}
-            onSelect={(opt) => onSelect(opt.value)}
-          />
-          {lookupErr ? (
-            <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-              Lookup unavailable:{" "}
-              <span className="font-mono">{lookupErr.status}</span>{" "}
-              <span className="font-mono">{lookupErr.code}</span>. Use the ID
-              input below.
+    <div className="w-full bg-[#f6f7fb]">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-900">
+              Reps
+            </h1>
+            <div className="mt-1 text-sm text-zinc-600">
+              Search and drill into rep analytics with a unified dashboard
+              layout.
             </div>
-          ) : null}
-          <div className="mt-3">
-            <div className="text-xs text-zinc-600">Or enter Rep ID</div>
-            <input
-              className="mt-1 h-10 w-full rounded border px-2"
-              type="number"
-              min={1}
-              value={repId ?? ""}
-              placeholder="e.g. 3"
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                router.replace(
-                  buildUrlWithParams(pathname, sp, { repId: v ?? null }),
-                );
-              }}
+          </div>
+
+          <Link
+            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+            href="/ho"
+          >
+            Back
+          </Link>
+        </div>
+
+        {err && <ApiErrorBanner err={err} />}
+        {notFoundMsg ? <EmptyCard title={notFoundMsg} /> : null}
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.9fr]">
+          <SectionCard
+            title="Search"
+            subtitle="Find a rep by name or enter a direct rep ID."
+          >
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                <SimpleTypeahead<number>
+                  key={`rep-typeahead-${typeaheadResetKey}`}
+                  label="Rep"
+                  placeholder="Type a name…"
+                  fetchOptions={fetchOptions}
+                  onSelect={(opt) => onSelect(opt.value)}
+                />
+              </div>
+
+              {lookupErr ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                  Lookup unavailable:{" "}
+                  <span className="font-mono">{lookupErr.status}</span>{" "}
+                  <span className="font-mono">{lookupErr.code}</span>. Use the ID
+                  input.
+                </div>
+              ) : null}
+
+              <div>
+                <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                  Or enter rep ID
+                </div>
+                <input
+                  className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:ring-2 focus:ring-violet-200"
+                  type="number"
+                  min={1}
+                  value={repId ?? ""}
+                  placeholder="e.g. 3"
+                  onChange={(e) => {
+                    const v = e.target.value ? Number(e.target.value) : null;
+                    router.replace(
+                      buildUrlWithParams(pathname, sp, { repId: v ?? null }),
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Filters"
+            subtitle="Keep the existing period and date logic unchanged."
+          >
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                  Period
+                </div>
+                <select
+                  className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-800 outline-none transition focus:ring-2 focus:ring-violet-200"
+                  value={filters.period}
+                  onChange={(e) =>
+                    onPeriodChange(e.target.value as DrilldownPeriod)
+                  }
+                >
+                  <option value="THIS_MONTH">THIS_MONTH</option>
+                  <option value="LAST_MONTH">LAST_MONTH</option>
+                  <option value="CUSTOM">CUSTOM</option>
+                </select>
+              </div>
+
+              {filters.period === "CUSTOM" ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                      Start date
+                    </div>
+                    <input
+                      type="date"
+                      className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:ring-2 focus:ring-violet-200"
+                      value={filters.dateFrom ?? ""}
+                      onChange={(e) => onCustomDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                      End date
+                    </div>
+                    <input
+                      type="date"
+                      className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:ring-2 focus:ring-violet-200"
+                      value={filters.dateTo ?? ""}
+                      onChange={(e) => onCustomDateTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </SectionCard>
+        </div>
+
+        <div className="mt-5">
+          {detailsQ.isLoading ? (
+            <div className={card("p-6")}>
+              <SkeletonBox lines={7} />
+            </div>
+          ) : !repId ? (
+            <EmptySelectionState
+              accentGlyph="R"
+              accentLabel="Rep detail"
+              title="No rep selected"
+              body="Search for a rep by name or enter a rep ID to view profile data, doctor visit trends, product mix, and recent activity for the selected rep."
+              tiles={[
+                {
+                  title: "Search",
+                  body: "Use the rep lookup above to quickly find a field rep by name.",
+                },
+                {
+                  title: "Filter",
+                  body: "Choose the current period or switch to a custom date range before loading analytics.",
+                },
+                {
+                  title: "Drill down",
+                  body: "Review visit history, product coverage, and rep profile metrics once a rep is selected.",
+                },
+              ]}
             />
-          </div>
-        </div>
-
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Filters</div>
-          <DrilldownFilterBar
-            value={rawFilters}
-            onChange={onFilters}
-            isFetching={detailsQ.isFetching}
-          />
-        </div>
-      </div>
-
-      <div className="mt-4 rounded border bg-white p-4">
-        <div className="mb-2 text-sm font-medium">Rep drilldown</div>
-        {detailsQ.isLoading ? (
-          <SkeletonBox lines={7} />
-        ) : !repId ? (
-          <EmptyCard
-            title="No rep selected"
-            body="Use the search box or enter a rep ID."
-          />
-        ) : detailsQ.error ? (
-          isApiError(detailsQ.error) ? (
-            <ApiErrorBanner err={detailsQ.error} />
+          ) : detailsQ.error ? (
+            isApiError(detailsQ.error) ? (
+              <ApiErrorBanner err={detailsQ.error} />
+            ) : (
+              <EmptyCard title="Failed to load details" />
+            )
           ) : (
-            <EmptyCard title="Failed to load details" />
-          )
-        ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <KpiCard
+                  label="Rep"
+                  value={repName}
+                  helper={
+                    <>
+                      ID <span className="font-mono">#{repId}</span>
+                    </>
+                  }
+                />
+
+                <KpiCard
+                  label="Total Visits"
+                  value={totalVisits ?? "—"}
+                  helper="From rep details response."
+                />
+
+                <KpiCard
+                  label="Avg Visits / Month"
+                  value={avgPerMonth ?? "—"}
+                  helper="Derived from visit log in selected window."
+                />
+
+                <KpiCard
+                  label="Last Visit"
+                  value={lastVisit ?? "—"}
+                  helper="From rep details response."
+                />
+              </div>
+
+              <div className="mt-5">
+                <SectionCard
+                  title="Rep Profile"
+                  subtitle="Showing selected profile fields from the current backend response."
+                >
+                  {profileFields.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {profileFields.map((field) => (
+                        <DetailStat
+                          key={field.label}
+                          label={field.label}
+                          value={field.value}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-5 text-sm text-zinc-600">
+                      No profile fields were returned by the current backend
+                      response for this rep.
+                    </div>
+                  )}
+                </SectionCard>
+              </div>
+
+              <details className="mt-5">
+                <summary className="cursor-pointer text-sm text-zinc-600 hover:text-zinc-800">
+                  Debug: raw response
+                </summary>
+                <div className="mt-3">
+                  <RawJson data={detailsQ.data} />
+                </div>
+              </details>
+            </>
+          )}
+        </div>
+
+        {showExpandedSections ? (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Rep</div>
-                <div className="mt-1 text-2xl font-semibold">{repName}</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  ID <span className="font-mono">#{repId}</span>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Total Visits</div>
-                <div className="mt-1 text-3xl font-semibold">
-                  {totalVisits ?? "—"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  From rep-details (if provided).
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Avg Visits / Month</div>
-                <div className="mt-1 text-3xl font-semibold">
-                  {avgPerMonth ?? "—"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Derived from rep visit log in window.
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Last Visit</div>
-                <div className="mt-1 text-3xl font-semibold">
-                  {lastVisit ?? "—"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  From rep-details.
-                </div>
-              </div>
+            <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <SectionCard
+                title="Doctor Visits Over Time"
+                subtitle="Weekly total doctor visits for this rep"
+              >
+                {activityQ.isLoading ? (
+                  <SkeletonBox lines={6} />
+                ) : activityErr ? (
+                  <ApiErrorBanner err={activityErr} />
+                ) : weekly.length === 0 ? (
+                  <EmptyCard title="No activity in window" />
+                ) : (
+                  <MiniLineChart points={weekly} />
+                )}
+              </SectionCard>
+
+              <SectionCard
+                title="Product Mix (This Rep)"
+                subtitle="Share of visits including each product"
+              >
+                {activityQ.isLoading ? (
+                  <SkeletonBox lines={6} />
+                ) : activityErr ? (
+                  <ApiErrorBanner err={activityErr} />
+                ) : productMix.length === 0 ? (
+                  <EmptyCard title="No products in activity" />
+                ) : (
+                  <MiniHBarChart rows={productMix} maxRows={8} />
+                )}
+              </SectionCard>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">Rep Profile</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Best-effort from current backend response.
-                </div>
-                <div className="mt-3 text-sm text-zinc-700">
-                  Activity loaded:{" "}
-                  <span className="font-mono">{activityItems.length}</span>{" "}
-                  calls in selected window.
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">Activity</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  {activityErr
-                    ? "Unavailable (request failed)."
-                    : "Available via rep visit log."}
-                </div>
-              </div>
-            </div>
+            <SectionCard
+              title="Activity"
+              subtitle="Calls found for this rep in the selected window"
+              className="mt-5"
+            >
+              {activityQ.isLoading ? (
+                <SkeletonBox lines={7} />
+              ) : activityErr ? (
+                <ApiErrorBanner err={activityErr} />
+              ) : activityItems.length === 0 ? (
+                <EmptyCard
+                  title="No activity"
+                  body="No calls found for this rep in the selected window."
+                />
+              ) : (
+                <>
+                  <TableShell>
+                    <table className="w-full table-fixed text-sm">
+                      <colgroup>
+                        <col className="w-[14%]" />
+                        <col className="w-[22%]" />
+                        <col className="w-[22%]" />
+                        <col className="w-[42%]" />
+                      </colgroup>
+                      <thead className="bg-zinc-50">
+                        <tr>
+                          <TableHeadCell>Date</TableHeadCell>
+                          <TableHeadCell>Doctor</TableHeadCell>
+                          <TableHeadCell>Territory</TableHeadCell>
+                          <TableHeadCell>Products Detailed</TableHeadCell>
+                        </tr>
+                      </thead>
+                      <tbody className="text-zinc-700">
+                        {visibleActivityRows.map((it) => (
+                          <tr
+                            key={String(it.callId)}
+                            className="border-t border-zinc-200/80 transition hover:bg-zinc-50/70"
+                          >
+                            <TableCell>{String(it.callDate ?? "—")}</TableCell>
+                            <TableCell>
+                              {String(it.doctorName ?? `Doctor #${it.doctorId}`)}
+                            </TableCell>
+                            <TableCell>
+                              {String(it.routeName ?? it.routeCode ?? "—")}
+                            </TableCell>
+                            <TableCell>
+                              {(it.productCodes ?? []).length
+                                ? String((it.productCodes ?? []).join(", "))
+                                : "—"}
+                            </TableCell>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
 
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-zinc-600">
-                Debug: raw response
-              </summary>
-              <div className="mt-3">
-                <RawJson data={detailsQ.data} />
-              </div>
-            </details>
+                    <div className="border-t border-zinc-200/80 px-4 py-3 text-xs text-zinc-500">
+                      Loaded rows: {activityItems.length}
+                    </div>
+                  </TableShell>
+
+                  {hasMoreActivityRows ? (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+                        onClick={() => setShowAllActivityRows((v) => !v)}
+                      >
+                        {showAllActivityRows ? "Show less" : "See more"}
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </SectionCard>
           </>
-        )}
-      </div>
+        ) : null}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">
-            Doctor Visits Over Time
-          </div>
-          {activityQ.isLoading ? (
-            <SkeletonBox lines={6} />
-          ) : activityErr ? (
-            <ApiErrorBanner err={activityErr} />
-          ) : weekly.length === 0 ? (
-            <EmptyCard title="No activity in window" />
-          ) : (
-            <MiniLineChart points={weekly} />
-          )}
-        </div>
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Product Mix (This Rep)</div>
-          {activityQ.isLoading ? (
-            <SkeletonBox lines={6} />
-          ) : activityErr ? (
-            <ApiErrorBanner err={activityErr} />
-          ) : productMix.length === 0 ? (
-            <EmptyCard title="No products in activity" />
-          ) : (
-            <MiniHBarChart rows={productMix} maxRows={8} />
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 rounded border bg-white p-4">
-        <div className="mb-2 text-sm font-medium">Activity</div>
-        {activityQ.isLoading ? (
-          <SkeletonBox lines={7} />
-        ) : activityErr ? (
-          <ApiErrorBanner err={activityErr} />
-        ) : activityItems.length === 0 ? (
-          <EmptyCard
-            title="No activity"
-            body="No calls found for this rep in the selected window."
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-zinc-50 text-zinc-700">
-                <tr>
-                  <th className="px-2 py-2 text-left">Date</th>
-                  <th className="px-2 py-2 text-left">Doctor</th>
-                  <th className="px-2 py-2 text-left">Territory</th>
-                  <th className="px-2 py-2 text-left">Products Detailed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {activityItems.map((it) => (
-                  <tr key={String(it.callId)}>
-                    <td className="px-2 py-2">{String(it.callDate ?? "—")}</td>
-                    <td className="px-2 py-2">
-                      {String(it.doctorName ?? `Doctor #${it.doctorId}`)}
-                    </td>
-                    <td className="px-2 py-2">
-                      {String(it.routeName ?? it.routeCode ?? "—")}
-                    </td>
-                    <td className="px-2 py-2">
-                      {(it.productCodes ?? []).length
-                        ? String((it.productCodes ?? []).join(", "))
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="mt-2 text-xs text-zinc-500">
-              Showing up to {activityQ.data?.size ?? 50} rows. Loaded rows:{" "}
-              {activityItems.length}.
-            </div>
-          </div>
-        )}
+        <div className="h-6" />
       </div>
     </div>
   );
