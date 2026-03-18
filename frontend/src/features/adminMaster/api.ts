@@ -8,6 +8,8 @@ export type Doctor = {
   status: "ACTIVE" | "RETIRED" | string;
   deleted: boolean;
   locations: string[];
+  primaryRep: string | null;
+  secondaryRep: string | null;
 };
 export type Chemist = {
   id: number;
