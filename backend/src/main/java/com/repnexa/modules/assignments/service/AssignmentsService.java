@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class AssignmentsService {
@@ -31,8 +32,7 @@ public class AssignmentsService {
             RouteRepository routes,
             TerritoryRepository territories,
             ScopeEnforcer scope,
-            ScopeJdbcRepository scopeJdbc
-    ) {
+            ScopeJdbcRepository scopeJdbc) {
         this.assignments = assignments;
         this.users = users;
         this.routes = routes;
@@ -41,8 +41,40 @@ public class AssignmentsService {
         this.scopeJdbc = scopeJdbc;
     }
 
+    // ✅ NEW: list all rep-route assignments visible to the actor (CM = all, FM =
+    // owned territories)
+    @Transactional(readOnly = true)
+    public List<RepRouteAssignmentDtos.RepRouteAssignmentResponse> listAll(RepnexaUserDetails actor) {
+        if (actor == null)
+            throw ApiException.unauthorized("UNAUTHORIZED", "Not authenticated");
+
+        List<Long> allowedRouteIds;
+        if (actor.role() == UserRole.CM) {
+            allowedRouteIds = scopeJdbc.listAllActiveRouteIdsForCm();
+        } else if (actor.role() == UserRole.FM) {
+            allowedRouteIds = scopeJdbc.listAllowedRouteIdsForFm(actor.id());
+        } else {
+            throw ApiException.forbidden("FORBIDDEN", "Not allowed");
+        }
+
+        if (allowedRouteIds.isEmpty())
+            return List.of();
+
+        return assignments.listForRouteIds(allowedRouteIds).stream()
+                .map(r -> new RepRouteAssignmentDtos.RepRouteAssignmentResponse(
+                        r.getId(),
+                        r.getRepUserId(),
+                        r.getRepUsername(),
+                        r.getRouteId(),
+                        r.getStartDate(),
+                        r.getEndDate(),
+                        Boolean.TRUE.equals(r.getEnabled())))
+                .toList();
+    }
+
     @Transactional
-    public RepRouteAssignmentDtos.RepRouteAssignmentResponse create(RepnexaUserDetails actor, RepRouteAssignmentDtos.CreateRepRouteAssignmentRequest req) {
+    public RepRouteAssignmentDtos.RepRouteAssignmentResponse create(RepnexaUserDetails actor,
+            RepRouteAssignmentDtos.CreateRepRouteAssignmentRequest req) {
         if (req == null || isBlank(req.repUsername()) || req.routeId() == null || req.startDate() == null) {
             throw ApiException.badRequest("VALIDATION_ERROR", "repUsername, routeId, startDate are required");
         }
@@ -50,25 +82,29 @@ public class AssignmentsService {
             throw ApiException.badRequest("VALIDATION_ERROR", "endDate must be >= startDate");
         }
 
-        // Route must exist and not be deleted; territory must exist and not be deleted
-        var route = routes.findById(req.routeId()).orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
-        if (route.getDeletedAt() != null) throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
+        var route = routes.findById(req.routeId())
+                .orElseThrow(() -> ApiException.notFound("ROUTE_NOT_FOUND", "Route not found"));
+        if (route.getDeletedAt() != null)
+            throw ApiException.conflict("ROUTE_DELETED", "Route is deleted");
 
         var territory = territories.findById(route.getTerritoryId())
                 .orElseThrow(() -> ApiException.notFound("TERRITORY_NOT_FOUND", "Territory not found"));
-        if (territory.getDeletedAt() != null) throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
+        if (territory.getDeletedAt() != null)
+            throw ApiException.conflict("TERRITORY_DELETED", "Territory is deleted");
 
-        // Scoping: CM ok, FM only within owned territories
         scope.assertCanManageRoute(actor, req.routeId());
 
         var rep = users.findByUsername(req.repUsername().trim())
                 .orElseThrow(() -> ApiException.notFound("USER_NOT_FOUND", "Rep user not found"));
-        if (rep.getRole() != UserRole.MR) throw ApiException.badRequest("VALIDATION_ERROR", "repUsername must be an MR user");
-        if (!rep.isEnabled()) throw ApiException.conflict("USER_DISABLED", "User is disabled");
+        if (rep.getRole() != UserRole.MR)
+            throw ApiException.badRequest("VALIDATION_ERROR", "repUsername must be an MR user");
+        if (!rep.isEnabled())
+            throw ApiException.conflict("USER_DISABLED", "User is disabled");
 
-        // Overlap guard
-        int overlap = scopeJdbc.countOverlappingAssignments(rep.getId(), req.routeId(), req.startDate(), req.endDate(), null);
-        if (overlap > 0) throw ApiException.conflict("ASSIGNMENT_OVERLAP", "Overlapping assignment exists for this rep and route");
+        int overlap = scopeJdbc.countOverlappingAssignments(rep.getId(), req.routeId(), req.startDate(), req.endDate(),
+                null);
+        if (overlap > 0)
+            throw ApiException.conflict("ASSIGNMENT_OVERLAP", "Overlapping assignment exists for this rep and route");
 
         RepRouteAssignment a = new RepRouteAssignment();
         a.setRepUserId(rep.getId());
@@ -86,15 +122,15 @@ public class AssignmentsService {
                 saved.getRouteId(),
                 saved.getStartDate(),
                 saved.getEndDate(),
-                saved.isEnabled()
-        );
+                saved.isEnabled());
     }
 
     @Transactional
-    public RepRouteAssignmentDtos.RepRouteAssignmentResponse patch(RepnexaUserDetails actor, long id, RepRouteAssignmentDtos.PatchRepRouteAssignmentRequest req) {
-        RepRouteAssignment a = assignments.findById(id).orElseThrow(() -> ApiException.notFound("ASSIGNMENT_NOT_FOUND", "Assignment not found"));
+    public RepRouteAssignmentDtos.RepRouteAssignmentResponse patch(RepnexaUserDetails actor, long id,
+            RepRouteAssignmentDtos.PatchRepRouteAssignmentRequest req) {
+        RepRouteAssignment a = assignments.findById(id)
+                .orElseThrow(() -> ApiException.notFound("ASSIGNMENT_NOT_FOUND", "Assignment not found"));
 
-        // Scoping: based on assignment route
         scope.assertCanManageRoute(actor, a.getRouteId());
 
         LocalDate newEnd = req == null ? null : req.endDate();
@@ -104,13 +140,17 @@ public class AssignmentsService {
             throw ApiException.badRequest("VALIDATION_ERROR", "endDate must be >= startDate");
         }
 
-        if (newEnd != null) a.setEndDate(newEnd);
-        if (enabled != null) a.setEnabled(enabled);
+        if (newEnd != null)
+            a.setEndDate(newEnd);
+        if (enabled != null)
+            a.setEnabled(enabled);
 
-        // If still enabled, ensure no overlaps created by changing endDate (rare but keep correct)
         if (a.isEnabled()) {
-            int overlap = scopeJdbc.countOverlappingAssignments(a.getRepUserId(), a.getRouteId(), a.getStartDate(), a.getEndDate(), a.getId());
-            if (overlap > 0) throw ApiException.conflict("ASSIGNMENT_OVERLAP", "Overlapping assignment exists for this rep and route");
+            int overlap = scopeJdbc.countOverlappingAssignments(a.getRepUserId(), a.getRouteId(), a.getStartDate(),
+                    a.getEndDate(), a.getId());
+            if (overlap > 0)
+                throw ApiException.conflict("ASSIGNMENT_OVERLAP",
+                        "Overlapping assignment exists for this rep and route");
         }
 
         RepRouteAssignment saved = assignments.save(a);
@@ -123,8 +163,7 @@ public class AssignmentsService {
                 saved.getRouteId(),
                 saved.getStartDate(),
                 saved.getEndDate(),
-                saved.isEnabled()
-        );
+                saved.isEnabled());
     }
 
     private boolean isBlank(String s) {
