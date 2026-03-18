@@ -1,22 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import { formatNumber, formatPercent } from "./format";
 
 export function RepPerformanceTable({ rows }: { rows: any[] }) {
-  const shown = rows.slice(0, 15);
+  const [expanded, setExpanded] = useState(false);
+
+  const shown = expanded ? rows : rows.slice(0, 5);
 
   return (
     <div>
-      <div className="overflow-auto rounded border">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-left">
+      <div className="rounded-2xl border border-zinc-200 bg-white">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-[42%]" />
+            <col className="w-[18%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+          </colgroup>
+          <thead className="border-b border-zinc-200 bg-zinc-50/80 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
             <tr>
-              <th className="p-2">Rep</th>
-              <th className="p-2">Visits</th>
-              <th className="p-2">Coverage %</th>
-              <th className="p-2">Target %</th>
+              <th className="px-4 py-3">Rep</th>
+              <th className="px-4 py-3 text-right">Visits</th>
+              <th className="px-4 py-3 text-right">Coverage %</th>
+              <th className="px-4 py-3 text-right">Target %</th>
             </tr>
           </thead>
+
           <tbody>
             {shown.map((r, idx) => {
               const rep = String(
@@ -49,11 +59,22 @@ export function RepPerformanceTable({ rows }: { rows: any[] }) {
                     : null;
 
               return (
-                <tr key={`${rep}-${idx}`} className="border-t">
-                  <td className="p-2">{rep}</td>
-                  <td className="p-2">{formatNumber(visits)}</td>
-                  <td className="p-2">{formatPercent(cov)}</td>
-                  <td className="p-2">{formatPercent(tgt)}</td>
+                <tr
+                  key={`${rep}-${idx}`}
+                  className="border-b border-zinc-100 last:border-b-0"
+                >
+                  <td className="px-4 py-3.5 font-medium text-zinc-900">
+                    <span className="block break-words">{rep}</span>
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-zinc-800">
+                    {formatNumber(visits)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-zinc-800">
+                    {formatPercent(cov)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right text-zinc-800">
+                    {formatPercent(tgt)}
+                  </td>
                 </tr>
               );
             })}
@@ -61,15 +82,16 @@ export function RepPerformanceTable({ rows }: { rows: any[] }) {
         </table>
       </div>
 
-      {rows.length > shown.length ? (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-sm text-zinc-700 underline">
-            See more
-          </summary>
-          <pre className="mt-2 max-h-80 overflow-auto rounded bg-zinc-50 p-3 text-xs">
-            {JSON.stringify(rows, null, 2)}
-          </pre>
-        </details>
+      {rows.length > 5 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="mt-4 inline-flex items-center rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+        >
+          {expanded
+            ? "Show less"
+            : `See more (${Math.max(rows.length - 5, 0)} more)`}
+        </button>
       ) : null}
     </div>
   );
