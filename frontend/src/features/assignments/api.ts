@@ -10,6 +10,12 @@ export type RepRouteAssignment = {
   enabled: boolean;
 };
 
+export async function listRepRouteAssignments(): Promise<RepRouteAssignment[]> {
+  return apiFetch<RepRouteAssignment[]>("/assignments/rep-routes", {
+    method: "GET",
+  });
+}
+
 export async function createRepRouteAssignment(input: {
   repUsername: string;
   routeId: number;
