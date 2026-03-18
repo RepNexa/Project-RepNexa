@@ -6,6 +6,8 @@ import com.repnexa.modules.auth.security.RepnexaUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/assignments/rep-routes")
 public class RepRouteAssignmentsController {
@@ -16,11 +18,17 @@ public class RepRouteAssignmentsController {
         this.svc = svc;
     }
 
+    // ✅ NEW: list all assignments (scoped: CM = all, FM = owned territories)
+    @GetMapping
+    public List<RepRouteAssignmentDtos.RepRouteAssignmentResponse> listAll(
+            @AuthenticationPrincipal RepnexaUserDetails actor) {
+        return svc.listAll(actor);
+    }
+
     @PostMapping
     public RepRouteAssignmentDtos.RepRouteAssignmentResponse create(
             @AuthenticationPrincipal RepnexaUserDetails actor,
-            @RequestBody RepRouteAssignmentDtos.CreateRepRouteAssignmentRequest req
-    ) {
+            @RequestBody RepRouteAssignmentDtos.CreateRepRouteAssignmentRequest req) {
         return svc.create(actor, req);
     }
 
@@ -28,8 +36,7 @@ public class RepRouteAssignmentsController {
     public RepRouteAssignmentDtos.RepRouteAssignmentResponse patch(
             @AuthenticationPrincipal RepnexaUserDetails actor,
             @PathVariable long id,
-            @RequestBody RepRouteAssignmentDtos.PatchRepRouteAssignmentRequest req
-    ) {
+            @RequestBody RepRouteAssignmentDtos.PatchRepRouteAssignmentRequest req) {
         return svc.patch(actor, id, req);
     }
 }
