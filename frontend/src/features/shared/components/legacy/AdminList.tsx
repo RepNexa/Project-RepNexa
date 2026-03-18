@@ -54,7 +54,7 @@ export default function AdminList({
   }, [rows]);
 
   return (
-    <div className="rounded border bg-white p-4">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
       <div className="mb-2 font-medium">{title}</div>
 
       {err ? (
@@ -94,14 +94,7 @@ export default function AdminList({
             </tbody>
           </table>
 
-          <details className="mt-3">
-            <summary className="cursor-pointer text-sm underline">
-              Raw JSON
-            </summary>
-            <pre className="mt-2 overflow-auto rounded bg-zinc-50 p-2 text-xs">
-              {JSON.stringify(rows, null, 2)}
-            </pre>
-          </details>
+          
         </div>
       ) : null}
     </div>
