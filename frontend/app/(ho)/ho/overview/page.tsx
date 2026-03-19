@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/src/features/auth/components/AuthGuard";
 import { useCompanyOverview } from "@/src/features/hoOverview/hooks";
 import type { CompanyOverviewFilters } from "@/src/features/hoOverview/types";
@@ -14,6 +14,11 @@ import {
 import { SimpleBarList } from "@/src/features/hoOverview/ui/SimpleBarList";
 import { RepPerformanceTable } from "@/src/features/hoOverview/ui/RepPerformanceTable";
 import { useMeForUi } from "@/src/features/hoOverview/useMeForUi";
+import {
+  downloadReportBlob,
+  useRegisterHoExporter,
+  type HoExportFormat,
+} from "@/src/features/shared/exports/hoExport";
 
 const TARGET_REP_COLORS = [
   "bg-violet-600",
@@ -84,7 +89,9 @@ function TableCell({
   className?: string;
 }) {
   return (
-    <td className={`px-4 py-3.5 align-top break-words text-zinc-700 ${className}`}>
+    <td
+      className={`px-4 py-3.5 align-top break-words text-zinc-700 ${className}`}
+    >
       {children}
     </td>
   );
@@ -144,6 +151,29 @@ export default function HoCompanyOverviewPage() {
 
   const q = useCompanyOverview(normalized);
 
+  const exportCompanyOverview = useCallback(
+    async (format: HoExportFormat) => {
+      const ext = format === "pdf" ? "pdf" : "csv";
+      await downloadReportBlob({
+        url: `/api/v1/reports/company-overview.${ext}`,
+        body: normalized,
+        fallbackFilename: `company-overview-${normalized.period}.${ext}`,
+      });
+    },
+    [normalized],
+  );
+
+  const hoExporter = useMemo(
+    () => ({
+      key: "ho-company-overview",
+      label: "Company Overview",
+      onExport: exportCompanyOverview,
+    }),
+    [exportCompanyOverview],
+  );
+
+  useRegisterHoExporter(hoExporter);
+
   const coveragePct = q.data?.coverageSelectedGrade?.value ?? null;
   const coverageDelta = q.data?.coverageSelectedGrade?.deltaVsLastMonth ?? null;
   const visitsTotal = q.data?.visits ?? null;
@@ -194,7 +224,6 @@ export default function HoCompanyOverviewPage() {
               <h1 className="mt-2.5 text-[1.3rem] font-semibold tracking-tight text-zinc-950 md:text-[1.95rem]">
                 Company Overview
               </h1>
-              
             </div>
 
             <div className="mt-3.5 border-t border-zinc-200/80 pt-3.5">
@@ -246,7 +275,9 @@ export default function HoCompanyOverviewPage() {
                 title="Coverage % by grade"
                 loading={animatedLoading}
                 error={q.error ? "Failed to load analytics." : undefined}
-                empty={!animatedLoading && !q.error && coverageByGrade.length === 0}
+                empty={
+                  !animatedLoading && !q.error && coverageByGrade.length === 0
+                }
                 emptyText="No grade coverage data."
                 className="xl:col-span-4"
               >
@@ -283,14 +314,19 @@ export default function HoCompanyOverviewPage() {
               >
                 <SimpleBarList
                   labelMinWidthClassName="min-w-[108px] sm:min-w-[126px]"
-                  items={targetByRep.slice(0, 20).map((x: any, idx: number) => ({
-                    label: String(x.repUsername ?? "Rep"),
-                    value: typeof x.achievement === "number" ? x.achievement : null,
-                    format: "percent" as const,
-                    colorClassName:
-                      TARGET_REP_COLORS[idx] ??
-                      TARGET_REP_COLORS[idx % TARGET_REP_COLORS.length],
-                  }))}
+                  items={targetByRep
+                    .slice(0, 20)
+                    .map((x: any, idx: number) => ({
+                      label: String(x.repUsername ?? "Rep"),
+                      value:
+                        typeof x.achievement === "number"
+                          ? x.achievement
+                          : null,
+                      format: "percent" as const,
+                      colorClassName:
+                        TARGET_REP_COLORS[idx] ??
+                        TARGET_REP_COLORS[idx % TARGET_REP_COLORS.length],
+                    }))}
                 />
               </WidgetCard>
             </div>
@@ -327,8 +363,12 @@ export default function HoCompanyOverviewPage() {
                     <tr>
                       <TableHeadCell>Rep</TableHeadCell>
                       <TableHeadCell>Territory</TableHeadCell>
-                      <TableHeadCell className="text-right">Visits</TableHeadCell>
-                      <TableHeadCell className="text-right">Doctors</TableHeadCell>
+                      <TableHeadCell className="text-right">
+                        Visits
+                      </TableHeadCell>
+                      <TableHeadCell className="text-right">
+                        Doctors
+                      </TableHeadCell>
                       <TableHeadCell className="text-right">A</TableHeadCell>
                       <TableHeadCell className="text-right">B</TableHeadCell>
                       <TableHeadCell className="text-right">C</TableHeadCell>
@@ -455,7 +495,9 @@ export default function HoCompanyOverviewPage() {
                 title="OOS Events by Product"
                 loading={animatedLoading}
                 error={q.error ? "Failed to load analytics." : undefined}
-                empty={!animatedLoading && !q.error && oosByProduct.length === 0}
+                empty={
+                  !animatedLoading && !q.error && oosByProduct.length === 0
+                }
                 emptyText="No OOS product events."
                 className="xl:col-span-6"
               >
@@ -469,7 +511,8 @@ export default function HoCompanyOverviewPage() {
                   }))}
                 />
                 <div className="mt-3 text-xs leading-5 text-zinc-500">
-                  Use to decide which products need distribution attention first.
+                  Use to decide which products need distribution attention
+                  first.
                 </div>
               </WidgetCard>
 
@@ -477,7 +520,9 @@ export default function HoCompanyOverviewPage() {
                 title="OOS Events by Territory"
                 loading={animatedLoading}
                 error={q.error ? "Failed to load analytics." : undefined}
-                empty={!animatedLoading && !q.error && oosByTerritory.length === 0}
+                empty={
+                  !animatedLoading && !q.error && oosByTerritory.length === 0
+                }
                 emptyText="No OOS territory events."
                 className="xl:col-span-6"
               >
