@@ -5,7 +5,13 @@ import Link from "next/link";
 import type { ApiError } from "@/src/lib/api/types";
 import type { RepTodoRow, TargetsResponse } from "../api";
 import { normalizeRoutes } from "../api";
-import { useRepContext, useRepTodo, useTargets } from "../hooks";
+import {
+  useRepContext,
+  useRepMasterChanges,
+  useRepTodo,
+  useTargets,
+} from "../hooks";
+import { RepMasterChangesPanel } from "./RepMasterChangesPanel";
 import { RepTodoTable } from "./RepTodoTable";
 
 function monthNow(): string {
@@ -74,8 +80,7 @@ function ErrorBanner({ err }: { err: ApiError }) {
       <div className="font-semibold text-red-900">Couldn’t load to-do data</div>
       <div className="mt-1 text-red-900">
         <span className="font-mono">{err.status}</span>{" "}
-        <span className="font-mono">{err.code}</span>{" "}
-        <span>{err.message}</span>
+        <span className="font-mono">{err.code}</span> <span>{err.message}</span>
       </div>
 
       {(authish || forbidden) && (
@@ -305,6 +310,7 @@ export function RepTodoPage() {
   const ctx = useRepContext();
   const targets = useTargets();
   const todo = useRepTodo({ month, routeId });
+  const masterChanges = useRepMasterChanges({ routeId, limit: 5 });
 
   const routes = React.useMemo(
     () => normalizeRoutes(ctx.data ?? {}, todo.data ?? null),
@@ -359,7 +365,7 @@ export function RepTodoPage() {
               </div>
 
               <div className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-                To-do
+                To-do & Alerts
               </div>
 
               <div className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
@@ -369,9 +375,9 @@ export function RepTodoPage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
                   {selectedRoute
-                    ? selectedRoute.code ??
+                    ? (selectedRoute.code ??
                       selectedRoute.name ??
-                      `Route #${selectedRoute.id}`
+                      `Route #${selectedRoute.id}`)
                     : "No route selected"}
                 </span>
                 <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
@@ -449,9 +455,9 @@ export function RepTodoPage() {
                   <div className="text-xs text-zinc-500">Route</div>
                   <div className="mt-1 break-words font-medium text-zinc-900">
                     {selectedRoute
-                      ? selectedRoute.code ??
+                      ? (selectedRoute.code ??
                         selectedRoute.name ??
-                        `Route #${selectedRoute.id}`
+                        `Route #${selectedRoute.id}`)
                       : "—"}
                   </div>
                 </div>
@@ -501,6 +507,12 @@ export function RepTodoPage() {
             ) : (
               <>
                 <SummaryCards rows={rows} targets={targetValues} />
+
+                <RepMasterChangesPanel
+                  items={masterChanges.data?.items ?? []}
+                  isLoading={masterChanges.isLoading && !masterChanges.data}
+                  error={(masterChanges.error as ApiError | null) ?? null}
+                />
 
                 <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm sm:p-4">
                   <RepTodoTable

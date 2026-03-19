@@ -41,6 +41,20 @@ export type RepTodoResponse = {
   routes?: RouteOption[];
 };
 
+export type RepMasterChangeItem = {
+  entityType: "DOCTOR" | "CHEMIST" | "PRODUCT" | string;
+  entityId: number;
+  title: string;
+  changeKind: "ADDED" | "UPDATED" | "RETIRED" | "DELETED" | string;
+  changedAt?: string | null;
+  subtitle?: string | null;
+};
+
+export type RepMasterChangesResponse = {
+  routeId: number;
+  items: RepMasterChangeItem[];
+};
+
 export async function getRepContext(): Promise<RepContextResponse> {
   return apiFetch<RepContextResponse>("/rep/context", {
     method: "GET",
@@ -67,6 +81,26 @@ export async function getRepTodo(params: {
     method: "GET",
     requireCsrf: false,
   });
+}
+
+export async function getRepMasterChanges(params: {
+  routeId: number;
+  limit?: number;
+}): Promise<RepMasterChangesResponse> {
+  const qs = new URLSearchParams({
+    routeId: String(params.routeId),
+  });
+  if (typeof params.limit === "number") {
+    qs.set("limit", String(params.limit));
+  }
+
+  return apiFetch<RepMasterChangesResponse>(
+    `/rep/alerts/master-data?${qs.toString()}`,
+    {
+      method: "GET",
+      requireCsrf: false,
+    },
+  );
 }
 
 export function normalizeRoutes(

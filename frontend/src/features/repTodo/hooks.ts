@@ -4,9 +4,15 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import type { ApiError } from "@/src/lib/api/types";
-import { getRepContext, getRepTodo, getTargets } from "./api";
+import {
+  getRepContext,
+  getRepMasterChanges,
+  getRepTodo,
+  getTargets,
+} from "./api";
 import type {
   RepContextResponse,
+  RepMasterChangesResponse,
   RepTodoResponse,
   TargetsResponse,
 } from "./api";
@@ -38,6 +44,26 @@ export function useRepTodo(params: {
       getRepTodo({
         month: params.month,
         routeId: params.routeId as number,
+      }),
+    staleTime: 3 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useRepMasterChanges(params: {
+  routeId: number | null;
+  limit?: number;
+}): UseQueryResult<RepMasterChangesResponse, ApiError> {
+  return useQuery({
+    queryKey: [
+      "repMasterChanges",
+      { routeId: params.routeId, limit: params.limit ?? 5 },
+    ],
+    enabled: typeof params.routeId === "number",
+    queryFn: () =>
+      getRepMasterChanges({
+        routeId: params.routeId as number,
+        limit: params.limit ?? 5,
       }),
     staleTime: 3 * 60 * 1000,
     placeholderData: keepPreviousData,
