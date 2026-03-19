@@ -13,7 +13,7 @@ import com.repnexa.modules.auth.domain.User;
 import com.repnexa.modules.auth.dto.ChangePasswordRequest;
 import com.repnexa.modules.auth.repo.UserRepository;
 import com.repnexa.modules.auth.security.RepnexaUserDetails;
-import com.repnexa.modules.meta.dto.MeResponse;
+import com.repnexa.modules.auth.dto.MeResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
