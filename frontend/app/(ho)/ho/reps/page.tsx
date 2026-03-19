@@ -1,5 +1,5 @@
-import { HoRepsPage } from "@/src/features/hoReps/HoRepsPage";
+import HoRepsPageWithExport from "@/src/features/hoReps/HoRepsPageWithExport";
 
 export default function Page() {
-  return <HoRepsPage />;
+  return <HoRepsPageWithExport />;
 }

@@ -1,5 +1,5 @@
-import { HoDoctorsPage } from "@/src/features/hoDoctors/HoDoctorsPage";
+import HoDoctorsPageWithExport from "@/src/features/hoDoctors/HoDoctorsPageWithExport";
 
 export default function Page() {
-  return <HoDoctorsPage />;
+  return <HoDoctorsPageWithExport />;
 }

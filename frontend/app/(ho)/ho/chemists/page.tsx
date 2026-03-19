@@ -1,5 +1,5 @@
-import { HoChemistsPage } from "@/src/features/hoChemists/HoChemistsPage";
+import HoChemistsPageWithExport from "@/src/features/hoChemists/HoChemistsPageWithExport";
 
 export default function Page() {
-  return <HoChemistsPage />;
+  return <HoChemistsPageWithExport />;
 }

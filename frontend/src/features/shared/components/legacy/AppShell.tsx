@@ -13,6 +13,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch, clearCsrfTokenCache } from "@/src/lib/api/client";
 import type { ApiError } from "@/src/lib/api/types";
 import { routeForRole } from "@/src/features/auth/roleRoutes";
+import {
+  HoExportRegistryContext,
+  type HoExportFormat,
+  type HoPageExporter,
+} from "@/src/features/shared/exports/hoExport";
 
 type Me = {
   id: number;
@@ -65,11 +70,28 @@ export default function AppShell({
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportErr, setExportErr] = useState<string | null>(null);
+  const [hoExporter, setHoExporter] = useState<HoPageExporter | null>(null);
+
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Backend report generation is CM-only for now.
+  const canUseReportsExport = me?.role === "CM";
+  const supportedFormats = hoExporter?.formats ?? ["csv", "pdf"];
+  const supportsCsv = supportedFormats.includes("csv");
+  const supportsPdf = supportedFormats.includes("pdf");
 
   useEffect(() => {
     setSidebarOpen(false);
     setMenuOpen(false);
+    setExportMenuOpen(false);
+    setExportErr(null);
+
+    // Avoid carrying a previous page's exporter into the next route.
+    setHoExporter(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -86,6 +108,33 @@ export default function AppShell({
   function onHamburgerClick() {
     setSidebarOpen((v) => !v);
   }
+
+  const runHoExport = async (format: HoExportFormat) => {
+    if (!canUseReportsExport) {
+      setExportErr("Export is available only for CM users.");
+      return;
+    }
+
+    if (!hoExporter) {
+      setExportErr("Export is not available on this page yet.");
+      return;
+    }
+
+    try {
+      setExportErr(null);
+      setExportBusy(true);
+      await hoExporter.onExport(format);
+      setExportMenuOpen(false);
+    } catch (e: any) {
+      setExportErr(
+        typeof e?.message === "string" && e.message.trim()
+          ? e.message
+          : "Export failed.",
+      );
+    } finally {
+      setExportBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (inShell) {
@@ -139,15 +188,26 @@ export default function AppShell({
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (!menuOpen) return;
       const t = e.target as Node;
-      if (menuRef.current && !menuRef.current.contains(t)) setMenuOpen(false);
+
+      if (menuOpen && menuRef.current && !menuRef.current.contains(t)) {
+        setMenuOpen(false);
+      }
+
+      if (
+        exportMenuOpen &&
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(t)
+      ) {
+        setExportMenuOpen(false);
+      }
     }
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setMenuOpen(false);
         setSidebarOpen(false);
+        setExportMenuOpen(false);
       }
     }
 
@@ -158,7 +218,7 @@ export default function AppShell({
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuOpen]);
+  }, [exportMenuOpen, menuOpen]);
 
   async function logout() {
     try {
@@ -283,7 +343,9 @@ export default function AppShell({
             <div className="truncate text-sm font-semibold text-zinc-900">
               {me?.username ?? "Repnexa"}
             </div>
-            <div className="text-xs text-zinc-500">{me?.role ?? meErr ?? "…"}</div>
+            <div className="text-xs text-zinc-500">
+              {me?.role ?? meErr ?? "…"}
+            </div>
           </div>
         </div>
 
@@ -319,7 +381,9 @@ export default function AppShell({
                       <span
                         className={[
                           "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-                          active ? "bg-violet-600" : "bg-zinc-300 group-hover:bg-violet-400",
+                          active
+                            ? "bg-violet-600"
+                            : "bg-zinc-300 group-hover:bg-violet-400",
                         ].join(" ")}
                       />
                       <span className="truncate">{it.label}</span>
@@ -389,7 +453,9 @@ export default function AppShell({
                 <span
                   className={[
                     "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-                    isActive(pathname, "/login") ? "bg-violet-600" : "bg-zinc-300",
+                    isActive(pathname, "/login")
+                      ? "bg-violet-600"
+                      : "bg-zinc-300",
                   ].join(" ")}
                 />
                 <span className="truncate">Login</span>
@@ -403,127 +469,202 @@ export default function AppShell({
 
   return (
     <ShellContext.Provider value={true}>
-      <div className="min-h-screen bg-violet-50/40 text-zinc-900">
-        <header className="sticky top-0 z-40 border-b border-violet-100 bg-white/90 backdrop-blur">
-          <div className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 sm:min-h-[60px] sm:px-4 lg:px-6">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={onHamburgerClick}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-700 transition-colors hover:bg-violet-50 hover:text-violet-700"
-                aria-label="Toggle navigation"
-              >
-                <span className="text-lg leading-none">≡</span>
-              </button>
-
-              <div className="h-9 w-9 shrink-0 rounded-2xl bg-violet-600 shadow-sm" />
-
-              <Link
-                href="/"
-                className="min-w-0 truncate text-sm font-semibold tracking-tight sm:text-base lg:text-lg"
-              >
-                Repnexa Dashboards
-              </Link>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                className="hidden h-9 items-center rounded-full border border-violet-200 bg-white px-4 text-sm text-zinc-700 transition-colors hover:bg-violet-50 sm:inline-flex"
-                onClick={() => {
-                  /* no-op */
-                }}
-              >
-                Export
-              </button>
-
-              <div className="relative" ref={menuRef}>
+      <HoExportRegistryContext.Provider value={setHoExporter}>
+        <div className="min-h-screen bg-violet-50/40 text-zinc-900">
+          <header className="sticky top-0 z-40 border-b border-violet-100 bg-white/90 backdrop-blur">
+            <div className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 sm:min-h-[60px] sm:px-4 lg:px-6">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((v) => !v)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700"
-                  aria-label="Account menu"
+                  onClick={onHamburgerClick}
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-zinc-700 transition-colors hover:bg-violet-50 hover:text-violet-700"
+                  aria-label="Toggle navigation"
                 >
-                  {avatarText}
+                  <span className="text-lg leading-none">≡</span>
                 </button>
 
-                {menuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg">
-                    <div className="px-2 py-2 text-xs text-zinc-500">
-                      {me ? (
-                        <>
-                          Logged in as{" "}
-                          <span className="font-medium text-zinc-800">
-                            {me.username}
-                          </span>{" "}
-                          <span className="opacity-70">({me.role})</span>
-                        </>
-                      ) : (
-                        meErr ?? "…"
-                      )}
+                <div className="h-9 w-9 shrink-0 rounded-2xl bg-violet-600 shadow-sm" />
+
+                <Link
+                  href="/"
+                  className="min-w-0 truncate text-sm font-semibold tracking-tight sm:text-base lg:text-lg"
+                >
+                  Repnexa Dashboards
+                </Link>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                <div className="relative hidden sm:block" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    data-export-trigger="ho"
+                    className={[
+                      "h-9 items-center rounded-full border border-violet-200 bg-white px-4 text-sm text-zinc-700 transition-colors hover:bg-violet-50 sm:inline-flex",
+                      !canUseReportsExport || exportBusy
+                        ? "cursor-not-allowed opacity-60"
+                        : "",
+                    ].join(" ")}
+                    disabled={!canUseReportsExport || exportBusy}
+                    onClick={() => {
+                      if (!canUseReportsExport || exportBusy) return;
+                      setExportErr(null);
+                      setExportMenuOpen((v) => !v);
+                    }}
+                    aria-haspopup="menu"
+                    aria-expanded={exportMenuOpen}
+                    aria-label="Export report"
+                  >
+                    {exportBusy ? "Exporting..." : "Export"}
+                  </button>
+
+                  {exportMenuOpen && (
+                    <div
+                      data-export-menu="ho"
+                      className="absolute right-0 mt-2 w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg"
+                      role="menu"
+                      aria-label="Export options"
+                    >
+                      <div className="px-2 py-1 text-xs text-zinc-500">
+                        {canUseReportsExport
+                          ? hoExporter?.label
+                            ? `Page: ${hoExporter.label}`
+                            : "Select a format"
+                          : "CM only"}
+                      </div>
+
+                      {supportsCsv ? (
+                        <button
+                          type="button"
+                          className="mt-1 block w-full rounded-xl px-2 py-2 text-left text-sm hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => void runHoExport("csv")}
+                          disabled={
+                            exportBusy || !canUseReportsExport || !hoExporter
+                          }
+                          role="menuitem"
+                        >
+                          Export CSV
+                        </button>
+                      ) : null}
+
+                      {supportsPdf ? (
+                        <button
+                          type="button"
+                          className="mt-1 block w-full rounded-xl px-2 py-2 text-left text-sm hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => void runHoExport("pdf")}
+                          disabled={
+                            exportBusy || !canUseReportsExport || !hoExporter
+                          }
+                          role="menuitem"
+                        >
+                          Export PDF
+                        </button>
+                      ) : null}
+
+                      {!hoExporter && canUseReportsExport ? (
+                        <div className="mt-2 rounded-xl bg-zinc-50 px-2 py-2 text-xs text-zinc-600">
+                          Export is not wired for this page yet.
+                        </div>
+                      ) : null}
+
+                      {exportErr ? (
+                        <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-2 py-2 text-xs text-red-700">
+                          {exportErr}
+                        </div>
+                      ) : null}
                     </div>
+                  )}
+                </div>
 
-                    <div className="h-px bg-zinc-100" />
+                <div className="relative" ref={menuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700"
+                    aria-label="Account menu"
+                  >
+                    {avatarText}
+                  </button>
 
-                    <Link
-                      href="/me"
-                      className="mt-1 block rounded-xl px-2 py-2 text-sm hover:bg-zinc-50"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Profile
-                    </Link>
+                  {menuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg">
+                      <div className="px-2 py-2 text-xs text-zinc-500">
+                        {me ? (
+                          <>
+                            Logged in as{" "}
+                            <span className="font-medium text-zinc-800">
+                              {me.username}
+                            </span>{" "}
+                            <span className="opacity-70">({me.role})</span>
+                          </>
+                        ) : (
+                          (meErr ?? "…")
+                        )}
+                      </div>
 
-                    <Link
-                      href="/change-password"
-                      className="block rounded-xl px-2 py-2 text-sm hover:bg-zinc-50"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Change password
-                    </Link>
+                      <div className="h-px bg-zinc-100" />
 
-                    {me ? (
-                      <button
-                        onClick={logout}
-                        className="block w-full rounded-xl px-2 py-2 text-left text-sm hover:bg-zinc-50"
-                      >
-                        Logout
-                      </button>
-                    ) : (
                       <Link
-                        href="/login"
+                        href="/me"
+                        className="mt-1 block rounded-xl px-2 py-2 text-sm hover:bg-zinc-50"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        Profile
+                      </Link>
+
+                      <Link
+                        href="/change-password"
                         className="block rounded-xl px-2 py-2 text-sm hover:bg-zinc-50"
                         onClick={() => setMenuOpen(false)}
                       >
-                        Login
+                        Change password
                       </Link>
-                    )}
-                  </div>
-                )}
+
+                      {me ? (
+                        <button
+                          onClick={logout}
+                          className="block w-full rounded-xl px-2 py-2 text-left text-sm hover:bg-zinc-50"
+                        >
+                          Logout
+                        </button>
+                      ) : (
+                        <Link
+                          href="/login"
+                          className="block rounded-xl px-2 py-2 text-sm hover:bg-zinc-50"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          Login
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {sidebarOpen ? (
-          <div className="fixed inset-0 z-50">
-            <div
-              className="absolute inset-0 bg-zinc-900/35"
-              onClick={() => setSidebarOpen(false)}
-            />
-            <aside className="absolute left-0 top-0 h-full w-[76vw] max-w-[280px] shadow-2xl sm:max-w-[300px]">
-              {DrawerContent}
-            </aside>
-          </div>
-        ) : null}
-
-        <main className="min-w-0 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
-          {title ? (
-            <div className="mb-4 text-lg font-semibold sm:text-xl">{title}</div>
+          {sidebarOpen ? (
+            <div className="fixed inset-0 z-50">
+              <div
+                className="absolute inset-0 bg-zinc-900/35"
+                onClick={() => setSidebarOpen(false)}
+              />
+              <aside className="absolute left-0 top-0 h-full w-[76vw] max-w-[280px] shadow-2xl sm:max-w-[300px]">
+                {DrawerContent}
+              </aside>
+            </div>
           ) : null}
 
-          {booting ? <div className="p-4 sm:p-6">Loading…</div> : children}
-        </main>
-      </div>
+          <main className="min-w-0 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
+            {title ? (
+              <div className="mb-4 text-lg font-semibold sm:text-xl">
+                {title}
+              </div>
+            ) : null}
+
+            {booting ? <div className="p-4 sm:p-6">Loading…</div> : children}
+          </main>
+        </div>
+      </HoExportRegistryContext.Provider>
     </ShellContext.Provider>
   );
 }
