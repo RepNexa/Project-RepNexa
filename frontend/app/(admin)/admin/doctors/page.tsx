@@ -8,6 +8,7 @@ import {
   patchDoctor,
   type Doctor,
 } from "@/src/features/adminMaster/api";
+import { useRegisterCsvPageExport } from "@/src/features/shared/exports/useCsvPageExport";
 
 type DoctorRow = Doctor & {
   grade?: string | null;
@@ -92,6 +93,12 @@ function Card(props: { children: React.ReactNode; className?: string }) {
 }
 
 export default function DoctorsPage() {
+  useRegisterCsvPageExport({
+    label: "Admin – Doctors",
+    url: "/api/v1/admin/doctors.csv",
+    fallbackFilename: "admin-doctors.csv",
+  });
+
   const [rows, setRows] = useState<Doctor[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"ACTIVE" | "RETIRED" | "ALL">("ACTIVE");
@@ -386,7 +393,7 @@ export default function DoctorsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
-                      {((d as DoctorRow).grade ?? "\u2014") as any}
+                      {((d as DoctorRow).grade ?? "—") as any}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-zinc-600">—</td>
