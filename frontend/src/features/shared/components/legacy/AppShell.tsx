@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   createContext,
   useContext,
@@ -42,6 +43,7 @@ function isRole(x: string): x is "CM" | "FM" | "MR" {
 
 type NavItem = { href: string; label: string };
 type NavSection = { title: string; items: NavItem[] };
+type NavigationMode = "overlay" | "push";
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
@@ -54,10 +56,12 @@ const ShellContext = createContext(false);
 export default function AppShell({
   title,
   allowedRoles,
+  navigationMode = "overlay",
   children,
 }: {
   title?: string;
   allowedRoles?: Array<"CM" | "FM" | "MR">;
+  navigationMode?: NavigationMode;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -70,6 +74,7 @@ export default function AppShell({
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
@@ -95,7 +100,25 @@ export default function AppShell({
   }, [pathname]);
 
   useEffect(() => {
-    if (!sidebarOpen) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+
+    const sync = () => setIsDesktopViewport(mq.matches);
+    sync();
+
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", sync);
+      return () => mq.removeEventListener("change", sync);
+    }
+
+    mq.addListener(sync);
+    return () => mq.removeListener(sync);
+  }, []);
+
+  useEffect(() => {
+    const shouldLockBody =
+      sidebarOpen && (navigationMode === "overlay" || !isDesktopViewport);
+
+    if (!shouldLockBody) return;
 
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -103,7 +126,7 @@ export default function AppShell({
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [sidebarOpen]);
+  }, [isDesktopViewport, navigationMode, sidebarOpen]);
 
   function onHamburgerClick() {
     setSidebarOpen((v) => !v);
@@ -312,6 +335,10 @@ export default function AppShell({
   }, [me?.role]);
 
   const avatarText = me ? initialsFromUsername(me.username) : "…";
+  const usesPushSidebar = navigationMode === "push";
+  const showDesktopPushSidebar = usesPushSidebar && isDesktopViewport;
+  const showOverlaySidebar = sidebarOpen && !showDesktopPushSidebar;
+  const companyRailOpen = !usesPushSidebar || !isDesktopViewport || sidebarOpen;
 
   if (inShell) {
     return (
@@ -324,15 +351,26 @@ export default function AppShell({
     );
   }
 
-  const navItemClass = (active: boolean) =>
+  const navItemClass = (active: boolean, compact = false) =>
     [
-      "group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all",
+      "group flex items-center rounded-2xl text-sm font-medium transition-all",
+      compact ? "justify-center px-0 py-3" : "gap-3 px-3 py-3",
       active
         ? "bg-violet-100 text-violet-700"
         : "text-zinc-700 hover:bg-violet-50 hover:text-violet-700",
     ].join(" ");
 
-  const DrawerContent = (
+  const renderNavDot = (active: boolean, compact = false) => (
+    <span
+      className={[
+        compact ? "h-2.5 w-2.5" : "h-2.5 w-2.5 shrink-0",
+        "rounded-full transition-colors",
+        active ? "bg-violet-600" : "bg-zinc-300 group-hover:bg-violet-400",
+      ].join(" ")}
+    />
+  );
+
+  const DrawerSidebarContent = (
     <div className="flex h-full flex-col bg-white">
       <div className="flex items-center justify-between border-b border-violet-100 px-4 py-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
@@ -378,14 +416,7 @@ export default function AppShell({
                       className={navItemClass(active)}
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <span
-                        className={[
-                          "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-                          active
-                            ? "bg-violet-600"
-                            : "bg-zinc-300 group-hover:bg-violet-400",
-                        ].join(" ")}
-                      />
+                      {renderNavDot(active)}
                       <span className="truncate">{it.label}</span>
                     </Link>
                   );
@@ -407,12 +438,7 @@ export default function AppShell({
               className={navItemClass(isActive(pathname, "/me"))}
               onClick={() => setSidebarOpen(false)}
             >
-              <span
-                className={[
-                  "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-                  isActive(pathname, "/me") ? "bg-violet-600" : "bg-zinc-300",
-                ].join(" ")}
-              />
+              {renderNavDot(isActive(pathname, "/me"))}
               <span className="truncate">Profile</span>
             </Link>
 
@@ -422,14 +448,7 @@ export default function AppShell({
               className={navItemClass(isActive(pathname, "/change-password"))}
               onClick={() => setSidebarOpen(false)}
             >
-              <span
-                className={[
-                  "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-                  isActive(pathname, "/change-password")
-                    ? "bg-violet-600"
-                    : "bg-zinc-300",
-                ].join(" ")}
-              />
+              {renderNavDot(isActive(pathname, "/change-password"))}
               <span className="truncate">Change password</span>
             </Link>
 
@@ -450,18 +469,121 @@ export default function AppShell({
                 className={navItemClass(isActive(pathname, "/login"))}
                 onClick={() => setSidebarOpen(false)}
               >
-                <span
-                  className={[
-                    "h-2.5 w-2.5 shrink-0 rounded-full transition-colors",
-                    isActive(pathname, "/login")
-                      ? "bg-violet-600"
-                      : "bg-zinc-300",
-                  ].join(" ")}
-                />
+                {renderNavDot(isActive(pathname, "/login"))}
                 <span className="truncate">Login</span>
               </Link>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const DesktopPushSidebarContent = (
+    <div className="px-3 py-6">
+      <div className="space-y-6">
+        {nav.map((sec) => (
+          <div key={sec.title}>
+            {companyRailOpen ? (
+              <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                {sec.title}
+              </div>
+            ) : null}
+
+            <div className="space-y-1">
+              {sec.items.map((it) => {
+                const active = isActive(pathname, it.href);
+                return (
+                  <Link
+                    key={it.href}
+                    href={it.href}
+                    title={it.label}
+                    className={navItemClass(active, !companyRailOpen)}
+                  >
+                    {renderNavDot(active, !companyRailOpen)}
+                    {companyRailOpen ? (
+                      <span className="truncate">{it.label}</span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 border-t border-zinc-100 pt-6">
+        {companyRailOpen ? (
+          <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+            Account
+          </div>
+        ) : null}
+
+        <div className="space-y-1">
+          <Link
+            href="/me"
+            title="Profile"
+            className={navItemClass(
+              isActive(pathname, "/me"),
+              !companyRailOpen,
+            )}
+          >
+            {renderNavDot(isActive(pathname, "/me"), !companyRailOpen)}
+            {companyRailOpen ? <span className="truncate">Profile</span> : null}
+          </Link>
+
+          <Link
+            href="/change-password"
+            title="Change password"
+            className={navItemClass(
+              isActive(pathname, "/change-password"),
+              !companyRailOpen,
+            )}
+          >
+            {renderNavDot(
+              isActive(pathname, "/change-password"),
+              !companyRailOpen,
+            )}
+            {companyRailOpen ? (
+              <span className="truncate">Change password</span>
+            ) : null}
+          </Link>
+
+          {me ? (
+            <button
+              type="button"
+              onClick={logout}
+              className={[
+                "group flex w-full rounded-2xl text-left text-sm font-medium transition-all",
+                companyRailOpen
+                  ? "items-center gap-3 px-3 py-3 text-zinc-700 hover:bg-red-50 hover:text-red-700"
+                  : "justify-center px-0 py-3 text-zinc-700 hover:bg-red-50 hover:text-red-700",
+              ].join(" ")}
+              title="Logout"
+            >
+              <span
+                className={[
+                  companyRailOpen ? "h-2.5 w-2.5 shrink-0" : "h-2.5 w-2.5",
+                  "rounded-full bg-zinc-300 transition-colors group-hover:bg-red-400",
+                ].join(" ")}
+              />
+              {companyRailOpen ? (
+                <span className="truncate">Logout</span>
+              ) : null}
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              title="Login"
+              className={navItemClass(
+                isActive(pathname, "/login"),
+                !companyRailOpen,
+              )}
+            >
+              {renderNavDot(isActive(pathname, "/login"), !companyRailOpen)}
+              {companyRailOpen ? <span className="truncate">Login</span> : null}
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -483,14 +605,37 @@ export default function AppShell({
                   <span className="text-lg leading-none">≡</span>
                 </button>
 
-                <div className="h-9 w-9 shrink-0 rounded-2xl bg-violet-600 shadow-sm" />
-
-                <Link
-                  href="/"
-                  className="min-w-0 truncate text-sm font-semibold tracking-tight sm:text-base lg:text-lg"
-                >
-                  Repnexa Dashboards
-                </Link>
+                {usesPushSidebar ? (
+                  <Link
+                    href="/"
+                    className="flex min-w-0 items-center gap-2 sm:gap-3"
+                  >
+                    <Image
+                      src="/repnexa_logo.svg"
+                      alt="Repnexa"
+                      width={150}
+                      height={40}
+                      className="h-8 w-auto shrink-0 object-contain sm:h-9 lg:h-10"
+                      priority
+                    />
+                    <span className="sr-only">Repnexa Dashboards</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/"
+                    className="flex min-w-0 items-center gap-2 sm:gap-3"
+                  >
+                    <Image
+                      src="/repnexa_logo.svg"
+                      alt="Repnexa"
+                      width={150}
+                      height={40}
+                      className="h-8 w-auto shrink-0 object-contain sm:h-9 lg:h-10"
+                      priority
+                    />
+                    <span className="sr-only">Repnexa Dashboards</span>
+                  </Link>
+                )}
               </div>
 
               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
@@ -642,27 +787,42 @@ export default function AppShell({
             </div>
           </header>
 
-          {sidebarOpen ? (
+          {showOverlaySidebar ? (
             <div className="fixed inset-0 z-50">
               <div
                 className="absolute inset-0 bg-zinc-900/35"
                 onClick={() => setSidebarOpen(false)}
               />
               <aside className="absolute left-0 top-0 h-full w-[76vw] max-w-[280px] shadow-2xl sm:max-w-[300px]">
-                {DrawerContent}
+                {DrawerSidebarContent}
               </aside>
             </div>
           ) : null}
 
-          <main className="min-w-0 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
-            {title ? (
-              <div className="mb-4 text-lg font-semibold sm:text-xl">
-                {title}
-              </div>
+          <div className="flex min-w-0">
+            {showDesktopPushSidebar ? (
+              <aside
+                className={[
+                  "hidden shrink-0 border-r border-violet-100 bg-white/95 transition-[width] duration-200 ease-out md:block",
+                  sidebarOpen ? "md:w-[280px] lg:w-[300px]" : "md:w-[84px]",
+                ].join(" ")}
+              >
+                <div className="sticky top-[60px] min-h-[calc(100vh-60px)]">
+                  {DesktopPushSidebarContent}
+                </div>
+              </aside>
             ) : null}
 
-            {booting ? <div className="p-4 sm:p-6">Loading…</div> : children}
-          </main>
+            <main className="min-w-0 flex-1 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
+              {title ? (
+                <div className="mb-4 text-lg font-semibold sm:text-xl">
+                  {title}
+                </div>
+              ) : null}
+
+              {booting ? <div className="p-4 sm:p-6">Loading…</div> : children}
+            </main>
+          </div>
         </div>
       </HoExportRegistryContext.Provider>
     </ShellContext.Provider>
