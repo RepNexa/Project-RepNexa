@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ApiError } from "@/src/lib/api/types";
 import {
   createProduct,
@@ -11,7 +12,6 @@ import {
 import { useRegisterCsvPageExport } from "@/src/features/shared/exports/useCsvPageExport";
 
 type ProductRow = Product & {
-  // future fields (prototype) - safe even if backend doesn't send yet
   molecule?: string | null;
   category?: string | null;
   priority?: string | null;
@@ -98,12 +98,14 @@ export default function AdminProductsPage() {
     url: "/api/v1/admin/products.csv",
     fallbackFilename: "admin-products.csv",
   });
+
+  const router = useRouter();
+
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [q, setQ] = useState("");
   const [priority, setPriority] = useState("ALL");
   const [addOpen, setAddOpen] = useState(false);
 
-  // Create form (current API)
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
 
@@ -160,6 +162,7 @@ export default function AdminProductsPage() {
   async function onDeactivate(id: number) {
     if (!confirm("Deactivate this item? It will be hidden from dashboards."))
       return;
+
     setBusy(true);
     setErr(null);
     try {
@@ -174,7 +177,6 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
       <Card>
         <div className="grid gap-4 md:grid-cols-[1.8fr_220px_auto] md:items-end">
           <div>
@@ -182,7 +184,7 @@ export default function AdminProductsPage() {
               Search product master
             </div>
             <PillInput
-              placeholder="Name, molecule, category\u2026"
+              placeholder="Name, molecule, category…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -206,7 +208,6 @@ export default function AdminProductsPage() {
         </div>
       </Card>
 
-      {/* Add panel (inline, not modal) */}
       {addOpen ? (
         <Card className="max-w-2xl">
           <div className="flex items-start justify-between">
@@ -245,7 +246,6 @@ export default function AdminProductsPage() {
               />
             </div>
 
-            {/* Prototype fields (not in API yet) */}
             <div className="md:col-span-2 text-xs text-zinc-500">
               Prototype fields like molecule, therapy area, status, launch year,
               notes will be wired once backend exposes them.
@@ -267,7 +267,6 @@ export default function AdminProductsPage() {
         </Card>
       ) : null}
 
-      {/* Table */}
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -293,38 +292,67 @@ export default function AdminProductsPage() {
                 <th className="px-4 py-3 text-left font-medium">Code</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-left font-medium">Launch Year</th>
+                <th className="px-4 py-3 text-right font-medium">Edit</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-t border-zinc-100">
-                  <td className="px-4 py-3">{p.name}</td>
-                  <td className="px-4 py-3 text-zinc-600">{p.code}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                      Active
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600">
-                    {p.launchYear ?? "\u2014"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="text-violet-700 hover:underline"
-                      disabled={busy}
-                      onClick={() => onDeactivate(p.id)}
-                      title="Deactivate (MVP placeholder for Edit)"
-                    >
-                      Deactivate
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((p) => {
+                const statusLabel = String(p.status ?? "ACTIVE").toUpperCase();
+                const isActive = statusLabel === "ACTIVE";
+
+                return (
+                  <tr key={p.id} className="border-t border-zinc-100">
+                    <td className="px-4 py-3">{p.name}</td>
+                    <td className="px-4 py-3 text-zinc-600">{p.code}</td>
+
+                    <td className="px-4 py-3">
+                      {isActive ? (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                          {statusLabel}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {p.launchYear ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="text-violet-700 hover:underline disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => router.push(`/admin/products/${p.id}/edit`)}
+                        title="Edit product"
+                      >
+                        Edit
+                      </button>
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="text-rose-700 hover:underline disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => onDeactivate(p.id)}
+                        title="Deactivate product"
+                      >
+                        Deactivate
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-zinc-500">
+                  <td colSpan={6} className="px-4 py-6 text-zinc-500">
                     No products
                   </td>
                 </tr>
