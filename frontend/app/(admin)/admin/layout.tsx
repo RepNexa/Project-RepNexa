@@ -7,5 +7,9 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell allowedRoles={["CM"]}>{children}</AppShell>;
+  return (
+    <AppShell allowedRoles={["CM"]} navigationMode="push">
+      {children}
+    </AppShell>
+  );
 }
