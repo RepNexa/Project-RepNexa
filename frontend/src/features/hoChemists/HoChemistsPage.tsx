@@ -10,7 +10,6 @@ import { DrilldownFilterBar } from "@/src/features/hoDrilldowns/common/FilterBar
 import {
   ApiErrorBanner,
   EmptyCard,
-  RawJson,
   SkeletonBox,
 } from "@/src/features/hoDrilldowns/common/UiParts";
 import {
@@ -28,10 +27,7 @@ import {
 } from "@/src/features/hoDrilldowns/common/url";
 import { useCachedTypeahead } from "@/src/features/hoDrilldowns/common/typeahead";
 import { chemistDetails, chemistVisitLog, lookupChemists } from "./api";
-import {
-  MiniHBarChart,
-  MiniLineChart,
-} from "@/src/features/hoDrilldowns/common/MiniCharts";
+import { MiniLineChart } from "@/src/features/hoDrilldowns/common/MiniCharts";
 
 function isApiError(e: any): e is ApiError {
   return (
@@ -118,6 +114,213 @@ async function fetchAllChemistVisitLog(args: {
   return { total: totalElements, items: all };
 }
 
+function pageCard(extra?: string) {
+  return [
+    "rounded-3xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-200/40",
+    extra ?? "",
+  ].join(" ");
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+  className = "",
+  contentClassName = "",
+}: {
+  title?: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <section className={pageCard(`min-w-0 overflow-hidden ${className}`)}>
+      {(title || subtitle) && (
+        <div className="border-b border-zinc-100 px-5 py-4 sm:px-6">
+          {title ? (
+            <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+              {title}
+            </h2>
+          ) : null}
+          {subtitle ? (
+            <p className="mt-1 text-sm leading-6 text-zinc-500">{subtitle}</p>
+          ) : null}
+        </div>
+      )}
+      <div className={`min-w-0 px-5 py-5 sm:px-6 ${contentClassName}`}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  helper,
+  danger,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+  danger?: boolean;
+}) {
+  return (
+    <div className={pageCard("relative overflow-hidden p-5")}>
+      <div className="absolute inset-x-0 top-0 h-1 bg-violet-500/80" />
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-4 text-[2.1rem] font-semibold leading-none tracking-tight text-zinc-950">
+        {value}
+      </div>
+      <div
+        className={`mt-4 text-sm ${
+          danger ? "text-rose-500" : "text-zinc-500"
+        }`}
+      >
+        {helper ?? "—"}
+      </div>
+    </div>
+  );
+}
+
+function DetailStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 px-4 py-3.5">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-medium text-zinc-900">{value}</div>
+    </div>
+  );
+}
+
+function EmptySelectionState({
+  title,
+  body,
+  accentLabel,
+  accentGlyph,
+  tiles,
+}: {
+  title: string;
+  body: string;
+  accentLabel: string;
+  accentGlyph: string;
+  tiles: Array<{ title: string; body: string }>;
+}) {
+  return (
+    <div className={pageCard("p-6 md:p-8")}>
+      <div className="rounded-[28px] border border-dashed border-zinc-200 bg-[linear-gradient(180deg,rgba(250,250,250,0.98),rgba(244,244,245,0.72))] px-6 py-10 md:px-10 md:py-12">
+        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl border border-violet-200 bg-violet-50 text-2xl text-violet-700 shadow-sm">
+            {accentGlyph}
+          </div>
+
+          <div className="mt-4 inline-flex items-center rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
+            {accentLabel}
+          </div>
+
+          <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-950">
+            {title}
+          </h2>
+
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600 md:text-base">
+            {body}
+          </p>
+
+          <div className="mt-8 grid w-full grid-cols-1 gap-4 md:grid-cols-3">
+            {tiles.map((tile) => (
+              <div
+                key={tile.title}
+                className="rounded-2xl border border-zinc-200/80 bg-white/90 px-5 py-5 text-left shadow-sm shadow-zinc-200/30"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  {tile.title}
+                </div>
+                <div className="mt-3 text-sm leading-6 text-zinc-600">
+                  {tile.body}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableToggleButton({
+  expanded,
+  onClick,
+}: {
+  expanded: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="mt-4 flex justify-start">
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+      >
+        {expanded ? "Show less" : "See more"}
+      </button>
+    </div>
+  );
+}
+
+function TableShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white">
+      <div className="overflow-x-auto">{children}</div>
+    </div>
+  );
+}
+
+function TableHeadCell({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      {children}
+    </th>
+  );
+}
+
+function TableRow({
+  children,
+  tinted = false,
+}: {
+  children: React.ReactNode;
+  tinted?: boolean;
+}) {
+  return (
+    <tr
+      className={`border-t border-zinc-100 transition hover:bg-zinc-50/60 ${
+        tinted ? "bg-rose-50/40" : "bg-white"
+      }`}
+    >
+      {children}
+    </tr>
+  );
+}
+
+function TableCell({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <td className={`px-4 py-3.5 align-top text-zinc-700 ${className}`}>{children}</td>;
+}
+
 export function HoChemistsPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -132,17 +335,22 @@ export function HoChemistsPage() {
     () => ({ period, dateFrom, dateTo }),
     [period, dateFrom, dateTo],
   );
+
   const filters = React.useMemo(
     () => normalizeDrilldownFilters(rawFilters),
     [rawFilters],
   );
+
   const range = React.useMemo(
     () => effectiveDateRange(filters),
     [filters.period, filters.dateFrom, filters.dateTo],
   );
+
   const [notFoundMsg, setNotFoundMsg] = React.useState<string | null>(null);
   const [repFilter, setRepFilter] = React.useState<string>("ALL");
   const [productFilter, setProductFilter] = React.useState<string>("ALL");
+  const [showAllOosRows, setShowAllOosRows] = React.useState(false);
+  const [showAllVisitRows, setShowAllVisitRows] = React.useState(false);
 
   const detailsQ = useQuery({
     queryKey: [
@@ -162,8 +370,7 @@ export function HoChemistsPage() {
       setNotFoundMsg(`Chemist not found (id=${chemistId}).`);
       router.replace(buildUrlWithParams(pathname, sp, { chemistId: null }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detailsQ.error]);
+  }, [chemistId, detailsQ.error, pathname, router, sp]);
 
   const logQ = useQuery({
     queryKey: [
@@ -202,6 +409,8 @@ export function HoChemistsPage() {
     setNotFoundMsg(null);
     setRepFilter("ALL");
     setProductFilter("ALL");
+    setShowAllOosRows(false);
+    setShowAllVisitRows(false);
     router.replace(buildUrlWithParams(pathname, sp, { chemistId: id }));
   };
 
@@ -209,15 +418,21 @@ export function HoChemistsPage() {
     setNotFoundMsg(null);
     setRepFilter("ALL");
     setProductFilter("ALL");
+    setShowAllOosRows(false);
+    setShowAllVisitRows(false);
     router.replace(
       buildUrlWithParams(pathname, sp, {
         period: next.period,
-        // Don't keep CUSTOM dates when switching back to THIS_MONTH/LAST_MONTH.
         dateFrom: next.period === "CUSTOM" ? (next.dateFrom ?? null) : null,
         dateTo: next.period === "CUSTOM" ? (next.dateTo ?? null) : null,
       }),
     );
   };
+
+  React.useEffect(() => {
+    setShowAllOosRows(false);
+    setShowAllVisitRows(false);
+  }, [chemistId, period, dateFrom, dateTo, repFilter, productFilter]);
 
   const err: ApiError | null =
     (detailsQ.error as any) || (logQ.error as any) || null;
@@ -225,54 +440,28 @@ export function HoChemistsPage() {
   const chemistName =
     pickStr(chemistObj, ["name", "code"]) ??
     (chemistId ? `Chemist #${chemistId}` : "Chemist");
+
   const totalVisits =
     typeof detailsQ.data?.visitCount === "number"
       ? detailsQ.data.visitCount
       : null;
+
   const oosByProduct: Array<{ key: string; count: number }> = Array.isArray(
     detailsQ.data?.oosByProduct,
   )
     ? detailsQ.data.oosByProduct
     : [];
+
   const lowByProduct: Array<{ key: string; count: number }> = Array.isArray(
     detailsQ.data?.lowByProduct,
   )
     ? detailsQ.data.lowByProduct
     : [];
+
   const oosCount = oosByProduct.reduce((a, x) => a + Number(x.count ?? 0), 0);
   const lowCount = lowByProduct.reduce((a, x) => a + Number(x.count ?? 0), 0);
 
-  const allVisitItems = React.useMemo(
-    () => logQ.data?.items ?? [],
-    [logQ.data],
-  );
-  const reps = React.useMemo(() => {
-    const set = new Set<string>();
-    for (const it of allVisitItems) {
-      const u = pickStr(it, ["repUsername", "rep_username", "rep"]) ?? "";
-      if (u) set.add(u);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [allVisitItems]);
-
-  const allProducts = React.useMemo(() => {
-    const set = new Set<string>();
-    // from detail aggregates
-    for (const p of oosByProduct) if (p?.key) set.add(String(p.key));
-    for (const p of lowByProduct) if (p?.key) set.add(String(p.key));
-    // from visit log arrays
-    for (const it of allVisitItems) {
-      for (const p of (it?.oosProductCodes ?? []) as any[]) {
-        const s = String(p ?? "").trim();
-        if (s) set.add(s);
-      }
-      for (const p of (it?.lowProductCodes ?? []) as any[]) {
-        const s = String(p ?? "").trim();
-        if (s) set.add(s);
-      }
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [allVisitItems, oosByProduct, lowByProduct]);
+  const allVisitItems = React.useMemo(() => logQ.data?.items ?? [], [logQ.data]);
 
   const visitItems = React.useMemo(() => {
     let xs = allVisitItems;
@@ -338,6 +527,26 @@ export function HoChemistsPage() {
     );
   }, [visitItems]);
 
+  const sortedVisitRows = React.useMemo(() => {
+    return visitItems
+      .slice()
+      .sort((a: any, b: any) => {
+        const ad = toIsoDateOrNull(pickStr(a, ["visitDate", "visit_date"])) ?? "";
+        const bd = toIsoDateOrNull(pickStr(b, ["visitDate", "visit_date"])) ?? "";
+        return bd.localeCompare(ad);
+      });
+  }, [visitItems]);
+
+  const oosRowsToRender = React.useMemo(
+    () => (showAllOosRows ? oosHistoryRows : oosHistoryRows.slice(0, 5)),
+    [oosHistoryRows, showAllOosRows],
+  );
+
+  const visitRowsToRender = React.useMemo(
+    () => (showAllVisitRows ? sortedVisitRows : sortedVisitRows.slice(0, 5)),
+    [sortedVisitRows, showAllVisitRows],
+  );
+
   const lastVisitDate = React.useMemo(() => {
     let best: string | null = null;
     for (const it of visitItems) {
@@ -372,80 +581,121 @@ export function HoChemistsPage() {
     [oosByProduct],
   );
 
+  const latestOosProduct = oosChartRows[0]?.label ?? null;
+  const territoryLabel = pickStr(chemistObj, ["routeName", "routeCode"]) ?? "—";
+
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Chemists</h1>
-          <div className="text-sm text-zinc-600">
-            Search and drill into chemist analytics (Milestone 7). Backend scope
-            applies.
+    <div className="w-full bg-[#f6f7fb]">
+      <div className="w-full px-2 py-6 md:px-4">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-950">
+              Chemist Detail
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Search and drill into chemist analytics with a unified dashboard
+              layout.
+            </p>
           </div>
+
+          <Link
+            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
+            href="/ho"
+          >
+            Back
+          </Link>
         </div>
-        <Link
-          className="rounded border px-3 py-2 text-sm hover:bg-zinc-50"
-          href="/ho"
+
+        {err ? <ApiErrorBanner err={err} /> : null}
+        {notFoundMsg ? <EmptyCard title={notFoundMsg} /> : null}
+
+        <SectionCard
+          className="mb-6"
+          contentClassName="space-y-5"
         >
-          Back
-        </Link>
-      </div>
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.9fr]">
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Search
+              </div>
+              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4">
+                <SimpleTypeahead<number>
+                  key={String(chemistId ?? "none")}
+                  label="Chemist"
+                  placeholder="Type a name..."
+                  fetchOptions={fetchOptions}
+                  onSelect={(opt) => onSelect(opt.value)}
+                />
 
-      {err && <ApiErrorBanner err={err} />}
-      {notFoundMsg ? <EmptyCard title={notFoundMsg} /> : null}
+                {lookupErr ? (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    Lookup unavailable:{" "}
+                    <span className="font-mono">{lookupErr.status}</span>{" "}
+                    <span className="font-mono">{lookupErr.code}</span>. Use the
+                    ID input below.
+                  </div>
+                ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Search</div>
-          <SimpleTypeahead<number>
-            label="Chemist"
-            placeholder="Type a name…"
-            fetchOptions={fetchOptions}
-            onSelect={(opt) => onSelect(opt.value)}
-          />
-          {lookupErr ? (
-            <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-              Lookup unavailable:{" "}
-              <span className="font-mono">{lookupErr.status}</span>{" "}
-              <span className="font-mono">{lookupErr.code}</span>. Use the ID
-              input below.
+                <div className="mt-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                    Or enter chemist ID
+                  </div>
+                  <input
+                    className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                    type="number"
+                    min={1}
+                    value={chemistId ?? ""}
+                    placeholder="e.g. 9"
+                    onChange={(e) => {
+                      const v = e.target.value ? Number(e.target.value) : null;
+                      router.replace(
+                        buildUrlWithParams(pathname, sp, { chemistId: v ?? null }),
+                      );
+                    }}
+                  />
+                </div>
+              </div>
             </div>
-          ) : null}
-          <div className="mt-3">
-            <div className="text-xs text-zinc-600">Or enter Chemist ID</div>
-            <input
-              className="mt-1 h-10 w-full rounded border px-2"
-              type="number"
-              min={1}
-              value={chemistId ?? ""}
-              placeholder="e.g. 9"
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                router.replace(
-                  buildUrlWithParams(pathname, sp, { chemistId: v ?? null }),
-                );
-              }}
-            />
+
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Filters
+              </div>
+              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4">
+                <DrilldownFilterBar
+                  value={rawFilters}
+                  onChange={onFilters}
+                  isFetching={detailsQ.isFetching}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </SectionCard>
 
-        <div className="rounded border bg-white p-4">
-          <div className="mb-2 text-sm font-medium">Filters</div>
-          <DrilldownFilterBar
-            value={rawFilters}
-            onChange={onFilters}
-            isFetching={detailsQ.isFetching}
-          />
-        </div>
-      </div>
-
-      <div className="mt-4 rounded border bg-white p-4">
-        <div className="mb-2 text-sm font-medium">Chemist drilldown</div>
         {detailsQ.isLoading ? (
-          <SkeletonBox lines={7} />
+          <div className={pageCard("p-6")}>
+            <SkeletonBox lines={7} />
+          </div>
         ) : !chemistId ? (
-          <EmptyCard
+          <EmptySelectionState
+            accentGlyph="C"
+            accentLabel="Chemist detail"
             title="No chemist selected"
-            body="Use the search box or enter a chemist ID."
+            body="Search for a chemist by name or enter a chemist ID to view visit activity, stock-out history, and recent field signals for the selected outlet."
+            tiles={[
+              {
+                title: "Search",
+                body: "Find a chemist quickly by typing the outlet name in the lookup field above.",
+              },
+              {
+                title: "Filter",
+                body: "Keep the current period or switch to a custom date range before reviewing analytics.",
+              },
+              {
+                title: "Drill down",
+                body: "Inspect visits, OOS patterns, and recent activity once a chemist has been selected.",
+              },
+            ]}
           />
         ) : detailsQ.error ? (
           isApiError(detailsQ.error) ? (
@@ -455,280 +705,269 @@ export function HoChemistsPage() {
           )
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Chemist</div>
-                <div className="mt-1 text-2xl font-semibold">{chemistName}</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  ID <span className="font-mono">#{chemistId}</span>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className={pageCard("relative overflow-hidden p-5")}>
+                <div className="absolute inset-x-0 top-0 h-1 bg-violet-500/80" />
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Chemist
+                </div>
+                <div className="mt-4 text-[2rem] font-semibold leading-tight tracking-tight text-zinc-950">
+                  {chemistName}
+                </div>
+                <div className="mt-4 inline-flex rounded-full bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">
+                  {territoryLabel}
                 </div>
               </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">Visits (period)</div>
-                <div className="mt-1 text-3xl font-semibold">
-                  {totalVisits ?? "—"}
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  From chemist-details.visitCount.
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">OOS events (period)</div>
-                <div className="mt-1 text-3xl font-semibold">{oosCount}</div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Derived from oosByProduct counts.
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-xs text-zinc-600">LOW stock (period)</div>
-                <div className="mt-1 text-3xl font-semibold">{lowCount}</div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Derived from lowByProduct counts.
-                </div>
-              </div>
+
+              <KpiCard
+                label="Chemist Visits"
+                value={String(totalVisits ?? "—")}
+                helper={repFilter === "ALL" ? "All reps" : repFilter}
+              />
+
+              <KpiCard
+                label="OOS Events"
+                value={String(oosCount)}
+                helper={oosCount > 0 ? "Chronic OOS risk" : "No OOS trend"}
+                danger={oosCount > 0}
+              />
+
+              <KpiCard
+                label="Last OOS Date"
+                value={lastOosDate ?? "—"}
+                helper={latestOosProduct ?? "No recent OOS product"}
+              />
             </div>
 
-            {/* Filter dropdowns (prototype intent: rep/product scope) */}
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">Chemist Profile</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Best-effort from current backend response.
-                </div>
-                <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Route ID</div>
-                    <div className="text-right">
-                      {pickNum(chemistObj, ["routeId", "route_id"]) ?? "—"}
-                    </div>
+            <div className="mt-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
+              <SectionCard
+                title="Chemist Profile"
+                subtitle="Basic information and recent signals for this outlet"
+              >
+                <div className="space-y-5">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
+                      Territory: {territoryLabel}
+                    </span>
+                    <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                      Status: Active
+                    </span>
+                    <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                      Channel: Retail
+                    </span>
                   </div>
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Avg visits / month</div>
-                    <div className="text-right">{avgPerMonth ?? "—"}</div>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Last visit</div>
-                    <div className="text-right">{lastVisitDate ?? "—"}</div>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <div className="text-zinc-600">Last OOS date</div>
-                    <div className="text-right">{lastOosDate ?? "—"}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">OOS by Product</div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Top products with OOS flags in the selected period.
-                </div>
-                <div className="mt-3">
-                  {oosChartRows.length === 0 ? (
-                    <EmptyCard title="No OOS flags in window" />
-                  ) : (
-                    <MiniHBarChart rows={oosChartRows} maxRows={8} />
-                  )}
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-sm font-medium">Rep</div>
-                <select
-                  className="mt-2 h-10 w-full rounded border px-2"
-                  value={repFilter}
-                  onChange={(e) => setRepFilter(e.target.value)}
-                >
-                  <option value="ALL">All reps</option>
-                  {reps.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-sm font-medium">Product</div>
-                <select
-                  className="mt-2 h-10 w-full rounded border px-2"
-                  value={productFilter}
-                  onChange={(e) => setProductFilter(e.target.value)}
-                >
-                  <option value="ALL">All products</option>
-                  {allProducts.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">
-                  Visits to This Chemist Over Time
-                </div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  Weekly chemist visit trend (filtered by rep/product if set).
-                </div>
-                <div className="mt-3">
-                  {logQ.isLoading ? (
-                    <SkeletonBox lines={6} />
-                  ) : logQ.error ? (
-                    isApiError(logQ.error) ? (
-                      <ApiErrorBanner err={logQ.error} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-zinc-700">
+                      Recent OOS products
+                    </span>
+                    {oosChartRows.length === 0 ? (
+                      <span className="text-sm text-zinc-500">—</span>
                     ) : (
-                      <EmptyCard title="Visit trend unavailable" />
-                    )
-                  ) : visitTrend.length === 0 ? (
-                    <EmptyCard title="No visits in window" />
-                  ) : (
-                    <MiniLineChart points={visitTrend} />
-                  )}
+                      oosChartRows.slice(0, 4).map((p) => (
+                        <span
+                          key={p.label}
+                          className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700"
+                        >
+                          {p.label}
+                        </span>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <DetailStat
+                      label="Route ID"
+                      value={pickNum(chemistObj, ["routeId", "route_id"]) ?? "—"}
+                    />
+                    <DetailStat
+                      label="Avg visits / month"
+                      value={avgPerMonth ?? "—"}
+                    />
+                    <DetailStat label="Last visit" value={lastVisitDate ?? "—"} />
+                    <DetailStat
+                      label="Last OOS date"
+                      value={lastOosDate ?? "—"}
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 px-4 py-3 text-sm text-zinc-600">
+                    <span className="font-medium text-zinc-800">
+                      LOW stock events:
+                    </span>{" "}
+                    {lowCount}
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="font-semibold">
-                  Stock-Out History – This Chemist
+              </SectionCard>
+
+              <SectionCard
+                title="Visits to This Chemist Over Time"
+                subtitle="Weekly chemist visit trend"
+                className="min-w-0"
+              >
+                <div className="flex min-w-0 flex-col">
+                  <div className="min-w-0 rounded-2xl border border-zinc-200/70 bg-zinc-50/60 p-4">
+                    {logQ.isLoading ? (
+                      <SkeletonBox lines={6} />
+                    ) : logQ.error ? (
+                      isApiError(logQ.error) ? (
+                        <ApiErrorBanner err={logQ.error} />
+                      ) : (
+                        <EmptyCard title="Visit trend unavailable" />
+                      )
+                    ) : visitTrend.length === 0 ? (
+                      <EmptyCard title="No visits in window" />
+                    ) : (
+                      <div className="block w-full min-w-0 overflow-hidden">
+                        <div className="w-full min-w-0 [&_*]:max-w-full">
+                          <MiniLineChart points={visitTrend} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 text-sm text-zinc-500">
+                    Helps show whether chemist coverage is consistent over the
+                    selected period.
+                  </div>
                 </div>
-                <div className="mt-1 text-sm text-zinc-600">
-                  OOS/LOW events by product (derived from visit log).
-                </div>
-                <div className="mt-3 overflow-x-auto rounded border">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-zinc-50 text-zinc-700">
+              </SectionCard>
+            </div>
+
+            <div className="mt-6">
+              <SectionCard
+                title="Stock-Out History – This Chemist"
+                subtitle={`OOS events by product at ${chemistName}`}
+              >
+                <TableShell>
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead className="bg-zinc-50/90">
                       <tr>
-                        <th className="px-2 py-2 text-left">Date</th>
-                        <th className="px-2 py-2 text-left">Product</th>
-                        <th className="px-2 py-2 text-left">Rep</th>
-                        <th className="px-2 py-2 text-left">Status</th>
-                        <th className="px-2 py-2 text-left">Remark</th>
+                        <TableHeadCell>Date</TableHeadCell>
+                        <TableHeadCell>Product</TableHeadCell>
+                        <TableHeadCell>Rep</TableHeadCell>
+                        <TableHeadCell>Status</TableHeadCell>
+                        <TableHeadCell>Remark</TableHeadCell>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
-                      {oosHistoryRows.slice(0, 40).map((r, idx) => (
-                        <tr key={`${r.date}-${r.product}-${r.status}-${idx}`}>
-                          <td className="px-2 py-2">{r.date || "—"}</td>
-                          <td className="px-2 py-2 font-mono">{r.product}</td>
-                          <td className="px-2 py-2">{r.rep}</td>
-                          <td className="px-2 py-2">{r.status}</td>
-                          <td className="px-2 py-2 text-zinc-500">—</td>
-                        </tr>
+                    <tbody>
+                      {oosRowsToRender.map((r, idx) => (
+                        <TableRow
+                          key={`${r.date}-${r.product}-${r.status}-${idx}`}
+                          tinted={r.status === "OOS"}
+                        >
+                          <TableCell>{r.date || "—"}</TableCell>
+                          <TableCell className="font-medium text-zinc-900">
+                            {r.product}
+                          </TableCell>
+                          <TableCell>{r.rep}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                r.status === "OOS"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {r.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-zinc-500">—</TableCell>
+                        </TableRow>
                       ))}
                       {oosHistoryRows.length === 0 ? (
-                        <tr>
-                          <td className="px-2 py-3 text-zinc-600" colSpan={5}>
+                        <tr className="border-t border-zinc-100">
+                          <td className="px-4 py-5 text-zinc-500" colSpan={5}>
                             No OOS/LOW events in this window.
                           </td>
                         </tr>
                       ) : null}
                     </tbody>
                   </table>
-                </div>
-              </div>
+                </TableShell>
+
+                {oosHistoryRows.length > 5 ? (
+                  <TableToggleButton
+                    expanded={showAllOosRows}
+                    onClick={() => setShowAllOosRows((v) => !v)}
+                  />
+                ) : null}
+              </SectionCard>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <div className="font-semibold">
-                Recent Visits & Notes – This Chemist
-              </div>
-              <div className="mt-1 text-sm text-zinc-600">
-                Visit log (filtered by rep/product if set). Notes are not yet
-                available in this dataset.
-              </div>
-              <div className="mt-3 overflow-x-auto rounded border">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-zinc-50 text-zinc-700">
-                    <tr>
-                      <th className="px-2 py-2 text-left">Date</th>
-                      <th className="px-2 py-2 text-left">Rep</th>
-                      <th className="px-2 py-2 text-left">Territory</th>
-                      <th className="px-2 py-2 text-left">OOS Products</th>
-                      <th className="px-2 py-2 text-left">LOW Products</th>
-                      <th className="px-2 py-2 text-left">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {visitItems
-                      .slice()
-                      .sort((a: any, b: any) => {
-                        const ad =
-                          toIsoDateOrNull(
-                            pickStr(a, ["visitDate", "visit_date"]),
-                          ) ?? "";
-                        const bd =
-                          toIsoDateOrNull(
-                            pickStr(b, ["visitDate", "visit_date"]),
-                          ) ?? "";
-                        return bd.localeCompare(ad);
-                      })
-                      .slice(0, 50)
-                      .map((it: any, idx: number) => {
+            <div className="mt-6">
+              <SectionCard
+                title="Recent Visits & Notes – This Chemist"
+                subtitle="Combines visit log and available product flags"
+              >
+                <TableShell>
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead className="bg-zinc-50/90">
+                      <tr>
+                        <TableHeadCell>Date</TableHeadCell>
+                        <TableHeadCell>Rep</TableHeadCell>
+                        <TableHeadCell>Territory</TableHeadCell>
+                        <TableHeadCell>Products Detailed</TableHeadCell>
+                        <TableHeadCell>Notes</TableHeadCell>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visitRowsToRender.map((it: any, idx: number) => {
                         const d =
                           toIsoDateOrNull(
                             pickStr(it, ["visitDate", "visit_date"]),
                           ) ?? "—";
                         const rep =
-                          pickStr(it, ["repUsername", "rep_username", "rep"]) ??
-                          "—";
+                          pickStr(it, [
+                            "repUsername",
+                            "rep_username",
+                            "rep",
+                          ]) ?? "—";
                         const terr =
                           pickStr(it, ["routeName", "routeCode"]) ?? "—";
                         const oos = (it?.oosProductCodes ?? [])
                           .map(String)
-                          .filter(Boolean)
-                          .join(", ");
+                          .filter(Boolean);
                         const low = (it?.lowProductCodes ?? [])
                           .map(String)
-                          .filter(Boolean)
-                          .join(", ");
+                          .filter(Boolean);
+                        const products = [...new Set([...oos, ...low])].join(", ");
+
                         return (
-                          <tr
+                          <TableRow
                             key={String(
                               pickNum(it, ["visitId", "visit_id"]) ?? idx,
                             )}
                           >
-                            <td className="px-2 py-2">{d}</td>
-                            <td className="px-2 py-2">{rep}</td>
-                            <td className="px-2 py-2">{terr}</td>
-                            <td className="px-2 py-2">{oos || "—"}</td>
-                            <td className="px-2 py-2">{low || "—"}</td>
-                            <td className="px-2 py-2 text-zinc-500">—</td>
-                          </tr>
+                            <TableCell>{d}</TableCell>
+                            <TableCell className="font-medium text-zinc-900">
+                              {rep}
+                            </TableCell>
+                            <TableCell>{terr}</TableCell>
+                            <TableCell>{products || "—"}</TableCell>
+                            <TableCell className="text-zinc-500">—</TableCell>
+                          </TableRow>
                         );
                       })}
-                    {visitItems.length === 0 ? (
-                      <tr>
-                        <td className="px-2 py-3 text-zinc-600" colSpan={6}>
-                          No visits in this window.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-2 text-xs text-zinc-500">
-                Showing up to 50 rows. Loaded rows: {visitItems.length}.
-              </div>
-            </div>
 
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-zinc-600">
-                Debug: raw response
-              </summary>
-              <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded border bg-white p-3">
-                  <div className="mb-2 text-sm font-medium">
-                    chemist-details
-                  </div>
-                  <RawJson data={detailsQ.data} />
-                </div>
-                <div className="rounded border bg-white p-3">
-                  <div className="mb-2 text-sm font-medium">visit-log</div>
-                  <RawJson data={logQ.data} />
-                </div>
-              </div>
-            </details>
+                      {visitItems.length === 0 ? (
+                        <tr className="border-t border-zinc-100">
+                          <td className="px-4 py-5 text-zinc-500" colSpan={5}>
+                            No visits in this window.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </TableShell>
+
+                {sortedVisitRows.length > 5 ? (
+                  <TableToggleButton
+                    expanded={showAllVisitRows}
+                    onClick={() => setShowAllVisitRows((v) => !v)}
+                  />
+                ) : null}
+              </SectionCard>
+            </div>
           </>
         )}
       </div>
