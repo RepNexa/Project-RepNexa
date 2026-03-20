@@ -14,7 +14,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @Import(RepTodoScopeIT.FixedClockConfig.class)
 public class RepTodoScopeIT {
 
@@ -148,10 +151,13 @@ public class RepTodoScopeIT {
         return id;
     }
 
-    private record AuthCtx(String csrfToken, Cookie xsrfCookie, Cookie jsessionCookie) {}
+    private record AuthCtx(MockHttpSession session, String csrfToken, Cookie xsrfCookie) {}
 
     private AuthCtx loginMr() throws Exception {
-        var csrfRes = mockMvc.perform(get("/api/v1/auth/csrf"))
+        MockHttpSession session = new MockHttpSession();
+
+        var csrfRes = mockMvc.perform(get("/api/v1/auth/csrf")
+                        .session(session))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -161,18 +167,15 @@ public class RepTodoScopeIT {
         Cookie xsrf = csrfRes.getResponse().getCookie("XSRF-TOKEN");
         assertNotNull(xsrf, "Expected XSRF-TOKEN cookie");
 
-        var loginRes = mockMvc.perform(post("/api/v1/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .cookie(xsrf)
                         .header("X-CSRF-Token", token)
                         .content("{\"username\":\"mr@repnexa.local\",\"password\":\"MR@1234\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
+                .andExpect(status().isOk());
 
-        Cookie jsession = loginRes.getResponse().getCookie("JSESSIONID");
-        assertNotNull(jsession, "Expected JSESSIONID cookie");
-
-        return new AuthCtx(token, xsrf, jsession);
+        return new AuthCtx(session, token, xsrf);
     }
 
     @Test
@@ -203,7 +206,7 @@ public class RepTodoScopeIT {
         var todoRes = mockMvc.perform(get("/api/v1/rep/todo")
                         .param("month", "2026-01")
                         .param("routeId", String.valueOf(createdRouteId))
-                        .cookie(auth.xsrfCookie(), auth.jsessionCookie()))
+                        .session(auth.session()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -248,7 +251,7 @@ public class RepTodoScopeIT {
         var todoRes2 = mockMvc.perform(get("/api/v1/rep/todo")
                         .param("month", "2026-01")
                         .param("routeId", String.valueOf(createdRouteId))
-                        .cookie(auth.xsrfCookie(), auth.jsessionCookie()))
+                        .session(auth.session()))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -265,7 +268,7 @@ public class RepTodoScopeIT {
         var denyRes = mockMvc.perform(get("/api/v1/rep/todo")
                         .param("month", "2026-01")
                         .param("routeId", "99999999")
-                       .cookie(auth.xsrfCookie(), auth.jsessionCookie()))
+                       .session(auth.session()))
                 .andExpect(status().isForbidden())
                 .andReturn();
 
