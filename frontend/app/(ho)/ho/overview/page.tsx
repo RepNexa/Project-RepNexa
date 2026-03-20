@@ -215,7 +215,7 @@ export default function HoCompanyOverviewPage() {
   return (
     <AuthGuard allowedRoles={["FM", "CM"]}>
       <div className="min-h-full bg-[#f6f7fb]">
-        <div className="mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-5">
+        <div className="w-full px-2 py-6 md:px-3 md:py-8">
           <div className="mb-4 rounded-[28px] border border-zinc-200/80 bg-white px-5 py-3.5 shadow-sm shadow-zinc-200/35 md:px-6 md:py-4">
             <div className="max-w-5xl">
               <div className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-violet-700">
