@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ApiError } from "@/src/lib/api/types";
+import { apiFetch } from "@/src/lib/api/client";
 import {
   createChemist,
   listChemists,
@@ -18,6 +20,16 @@ type ChemistRow = Chemist & {
   status?: string | null;
   lastOosDate?: string | null;
   oosCount90d?: number | null;
+};
+
+type OosHistoryItem = {
+  date: string;
+  productCode: string;
+  status: "OOS" | "LOW" | string;
+  repUserId: number;
+  repUsername: string;
+  routeId: number;
+  routeName: string;
 };
 
 function PillInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -93,13 +105,20 @@ function Card(props: { children: React.ReactNode; className?: string }) {
   );
 }
 
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function ChemistsPage() {
   useRegisterCsvPageExport({
     label: "Admin – Chemists",
     url: "/api/v1/admin/chemists.csv",
     fallbackFilename: "admin-chemists.csv",
   });
-  const [rows, setRows] = useState<Chemist[]>([]);
+
+  const router = useRouter();
+
+  const [rows, setRows] = useState<ChemistRow[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [q, setQ] = useState("");
   const [territory, setTerritory] = useState("ALL");
@@ -111,19 +130,85 @@ export default function ChemistsPage() {
   const [err, setErr] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const routeById = useMemo(
+    () => new Map(routes.map((r) => [r.id, r])),
+    [routes],
+  );
+
+  const territoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of routes) {
+      if (!r.deleted && r.territoryName) set.add(r.territoryName);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [routes]);
+
+  async function enrichOosMetrics(chemists: Chemist[]): Promise<ChemistRow[]> {
+    const today = new Date();
+    const todayIso = isoDate(today);
+
+    const df365 = new Date(today);
+    df365.setDate(df365.getDate() - 365);
+    const df365Iso = isoDate(df365);
+
+    const df90 = new Date(today);
+    df90.setDate(df90.getDate() - 90);
+    const df90Iso = isoDate(df90);
+
+    const LIMIT_CHEMISTS = 60;
+
+    const first = chemists.slice(0, LIMIT_CHEMISTS);
+    const rest = chemists.slice(LIMIT_CHEMISTS).map((c) => ({
+      ...c,
+      lastOosDate: null,
+      oosCount90d: null,
+    }));
+
+    const enrichedFirst = await Promise.all(
+      first.map(async (c) => {
+        try {
+          const qs = `?dateFrom=${encodeURIComponent(df365Iso)}&dateTo=${encodeURIComponent(todayIso)}&limit=200`;
+          const items = await apiFetch<OosHistoryItem[]>(
+            `/analytics/chemists/${c.id}/oos-history${qs}`,
+            { method: "GET", requireCsrf: false },
+          );
+
+          const lastOos = items.find(
+            (x) => String(x.status).toUpperCase() === "OOS",
+          );
+          const lastOosDate = lastOos?.date ?? null;
+
+          const oosCount90d = items.filter(
+            (x) =>
+              String(x.status).toUpperCase() === "OOS" && x.date >= df90Iso,
+          ).length;
+
+          return { ...c, lastOosDate, oosCount90d } as ChemistRow;
+        } catch {
+          return { ...c, lastOosDate: null, oosCount90d: null } as ChemistRow;
+        }
+      }),
+    );
+
+    return [...enrichedFirst, ...rest];
+  }
+
   async function reload() {
     setErr(null);
     try {
-      const [chemists, rr] = await Promise.all([
-        listChemists(""),
-        listRoutes(),
-      ]);
-      setRows(chemists);
-      setRoutes(rr.filter((r) => !r.deleted));
+      const [chemists, rr] = await Promise.all([listChemists(""), listRoutes()]);
+      const activeRoutes = rr.filter((r) => !r.deleted);
+
+      setRoutes(activeRoutes);
+      setRows(chemists as ChemistRow[]);
+
+      const enriched = await enrichOosMetrics(chemists);
+      setRows(enriched);
     } catch (e) {
       setErr(e as ApiError);
     }
   }
+
   useEffect(() => {
     void reload();
   }, []);
@@ -147,6 +232,7 @@ export default function ChemistsPage() {
   async function onDeactivate(id: number) {
     if (!confirm("Deactivate this item? It will be hidden from dashboards."))
       return;
+
     setBusy(true);
     setErr(null);
     try {
@@ -159,19 +245,35 @@ export default function ChemistsPage() {
     }
   }
 
-  const filtered = (rows as ChemistRow[])
+  const filtered = rows
     .filter((c) => !c.deleted)
+    .filter((c) => {
+      if (territory === "ALL") return true;
+      const terr = c.territory ?? routeById.get(c.routeId)?.territoryName ?? "";
+      return terr === territory;
+    })
     .filter((c) => {
       const qq = q.trim().toLowerCase();
       if (!qq) return true;
-      return (c.name ?? "").toLowerCase().includes(qq);
-    });
 
-  const routeById = new Map(routes.map((r) => [r.id, r]));
+      const terr = (
+        c.territory ??
+        routeById.get(c.routeId)?.territoryName ??
+        ""
+      ).toLowerCase();
+      const routeCode = (routeById.get(c.routeId)?.code ?? "").toLowerCase();
+      const channel = (c.channel ?? "").toLowerCase();
+
+      return (
+        (c.name ?? "").toLowerCase().includes(qq) ||
+        terr.includes(qq) ||
+        routeCode.includes(qq) ||
+        channel.includes(qq)
+      );
+    });
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
       <Card>
         <div className="grid gap-4 md:grid-cols-[1.8fr_260px_auto] md:items-end">
           <div>
@@ -179,21 +281,27 @@ export default function ChemistsPage() {
               Search chemist master
             </div>
             <PillInput
-              placeholder="Name, territory…"
+              placeholder="Name, route, territory…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
+
           <div>
             <div className="mb-1 text-xs text-zinc-500">Territory</div>
             <PillSelect
               value={territory}
               onChange={(e) => setTerritory(e.target.value)}
-              disabled
             >
               <option value="ALL">All territories</option>
+              {territoryOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </PillSelect>
           </div>
+
           <div className="flex md:justify-end">
             <PrimaryButton type="button" onClick={() => setAddOpen(true)}>
               + Add chemist
@@ -202,7 +310,6 @@ export default function ChemistsPage() {
         </div>
       </Card>
 
-      {/* Add panel */}
       {addOpen ? (
         <Card className="max-w-2xl">
           <div className="flex items-start justify-between">
@@ -266,7 +373,6 @@ export default function ChemistsPage() {
         </Card>
       ) : null}
 
-      {/* Table */}
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -299,42 +405,86 @@ export default function ChemistsPage() {
                 <th className="px-4 py-3 text-left font-medium">
                   OOS Count (90d)
                 </th>
+                <th className="px-4 py-3 text-right font-medium">Edit</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-t border-zinc-100">
-                  <td className="px-4 py-3">{c.name}</td>
-                  <td className="px-4 py-3 text-zinc-600">
-                    {routeById.get((c as any).routeId)?.code ??
-                      `#${(c as any).routeId}`}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                      Active
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="text-violet-700 hover:underline"
-                      disabled={busy}
-                      onClick={() => onDeactivate(c.id)}
-                      title="Deactivate (MVP placeholder for Edit)"
-                    >
-                      Deactivate
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((c) => {
+                const route = routeById.get(c.routeId);
+                const territoryLabel = c.territory ?? route?.territoryName ?? "—";
+                const statusLabel = String(c.status ?? "ACTIVE").toUpperCase();
+                const isActive = statusLabel === "ACTIVE";
+
+                return (
+                  <tr key={c.id} className="border-t border-zinc-100">
+                    <td className="px-4 py-3">{c.name}</td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {route?.code ?? `#${c.routeId}`}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {territoryLabel}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {c.channel ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {isActive ? (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                          {statusLabel}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {c.lastOosDate ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {c.oosCount90d == null ? "—" : String(c.oosCount90d)}
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="text-violet-700 hover:underline disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() =>
+                          router.push(`/admin/chemists/${c.id}/edit`)
+                        }
+                        title="Edit chemist"
+                      >
+                        Edit
+                      </button>
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="text-rose-700 hover:underline disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => onDeactivate(c.id)}
+                        title="Deactivate this chemist"
+                      >
+                        Deactivate
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-zinc-500">
+                  <td colSpan={9} className="px-4 py-6 text-zinc-500">
                     No chemists
                   </td>
                 </tr>
