@@ -65,6 +65,8 @@ public class DoctorAnalyticsJdbcRepository {
         select
           d.id as doctor_id,
           d.name as doctor_name,
+          d.grade as grade,
+          d.status as status,
           count(c.id) as visit_count,
           max(c.call_date) as last_visit_date
         from doctor_calls c
@@ -80,17 +82,19 @@ public class DoctorAnalyticsJdbcRepository {
           )
         """ + (doctorId != null ? " and d.id = :doctorId " : "") +
         """
-        group by d.id, d.name
+        group by d.id, d.name, d.grade, d.status
         order by visit_count desc, d.name asc
         limit 200
         """;
 
     return jdbc.query(sql, params, (rs, i) -> new DoctorAnalyticsController.DoctorRow(
-        rs.getLong("doctor_id"),
-        rs.getString("doctor_name"),
-        rs.getLong("visit_count"),
-        readLocalDate(rs, "last_visit_date")
-    ));
+    rs.getLong("doctor_id"),
+    rs.getString("doctor_name"),
+    rs.getString("grade"),
+    rs.getString("status"),
+    rs.getLong("visit_count"),
+    readLocalDate(rs, "last_visit_date")
+));
   }
 
   public long countDoctorVisitLog(long doctorId, List<Long> routeIds, LocalDate dateFrom, LocalDate dateTo) {
