@@ -687,7 +687,7 @@ export function HoDoctorsPage() {
 
   return (
     <div className="w-full bg-[#f6f7fb]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6">
+      <div className="w-full px-2 py-6 md:px-4">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-900">
