@@ -594,7 +594,7 @@ export default function AppShell({
       <HoExportRegistryContext.Provider value={setHoExporter}>
         <div className="min-h-screen bg-violet-50/40 text-zinc-900">
           <header className="sticky top-0 z-40 border-b border-violet-100 bg-white/90 backdrop-blur">
-            <div className="flex min-h-[56px] w-full items-center justify-between gap-3 px-3 sm:min-h-[60px] sm:px-4 lg:px-6">
+            <div className="relative flex min-h-[56px] w-full items-center justify-between gap-3 px-3 sm:min-h-[60px] sm:px-4 lg:px-6">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <button
                   type="button"
@@ -606,20 +606,22 @@ export default function AppShell({
                 </button>
 
                 {usesPushSidebar ? (
-                  <Link
-                    href="/"
-                    className="flex min-w-0 items-center gap-2 sm:gap-3"
-                  >
-                    <Image
-                      src="/repnexa_logo.svg"
-                      alt="Repnexa"
-                      width={150}
-                      height={40}
-                      className="h-8 w-auto shrink-0 object-contain sm:h-9 lg:h-10"
-                      priority
-                    />
-                    <span className="sr-only">Repnexa Dashboards</span>
-                  </Link>
+                  <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+  <Link
+    href="/"
+    className="pointer-events-auto flex items-center justify-center"
+  >
+    <Image
+      src="/repnexa_logo.svg"
+      alt="Repnexa"
+      width={150}
+      height={40}
+      className="h-8 w-auto object-contain sm:h-9 lg:h-10"
+      priority
+    />
+    <span className="sr-only">Repnexa Dashboards</span>
+  </Link>
+</div>
                 ) : (
                   <Link
                     href="/"
