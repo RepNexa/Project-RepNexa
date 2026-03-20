@@ -70,19 +70,6 @@ function pickNum(obj: any, keys: string[]): number | null {
   return null;
 }
 
-function formatProfileValue(value: unknown): string {
-  if (value == null) return "—";
-  if (typeof value === "string") return value.trim() || "—";
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) {
-    const cleaned = value
-      .map((v) => (v == null ? "" : String(v).trim()))
-      .filter(Boolean);
-    return cleaned.length ? cleaned.join(", ") : "—";
-  }
-  return "—";
-}
-
 function card(extra?: string) {
   return [
     "rounded-[28px] border border-zinc-200/80 bg-white shadow-sm shadow-zinc-200/40",
@@ -148,25 +135,6 @@ function KpiCard({
         }`}
       >
         {helper ?? "—"}
-      </div>
-    </div>
-  );
-}
-
-function DetailStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 px-4 py-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-        {label}
-      </div>
-      <div className="mt-2 break-words text-sm font-medium text-zinc-900">
-        {value}
       </div>
     </div>
   );
@@ -442,32 +410,6 @@ export function HoRepsPage() {
     return (activityItems.length / months).toFixed(1);
   }, [range?.dateFrom, range?.dateTo, activityItems.length]);
 
-  const profileFields = React.useMemo(() => {
-    if (!row0 || typeof row0 !== "object") return [];
-
-    const fieldDefs: Array<{ label: string; keys: string[] }> = [
-      { label: "Username", keys: ["repUsername", "username"] },
-      { label: "Code", keys: ["repCode", "code"] },
-      { label: "Name", keys: ["repName", "name"] },
-      { label: "Territory", keys: ["territoryName", "territory", "territoryCode"] },
-      { label: "Route", keys: ["routeName", "route", "routeCode"] },
-      { label: "Area", keys: ["areaName", "area"] },
-      { label: "Manager", keys: ["managerName", "manager", "supervisorName"] },
-      { label: "Grade Focus", keys: ["gradeFocus", "focusGrade"] },
-    ];
-
-    return fieldDefs.map((def) => {
-      for (const key of def.keys) {
-        const value = row0?.[key];
-        const formatted = formatProfileValue(value);
-        if (formatted !== "—") {
-          return { label: def.label, value: formatted };
-        }
-      }
-      return { label: def.label, value: "—" };
-    });
-  }, [row0]);
-
   const showExpandedSections =
     typeof repId === "number" && repId > 0 && !detailsQ.isLoading && !detailsQ.error;
 
@@ -662,30 +604,6 @@ export function HoRepsPage() {
                   value={lastVisit ?? "—"}
                   helper="From rep details response."
                 />
-              </div>
-
-              <div className="mt-5">
-                <SectionCard
-                  title="Rep Profile"
-                  subtitle="Showing selected profile fields from the current backend response."
-                >
-                  {profileFields.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                      {profileFields.map((field) => (
-                        <DetailStat
-                          key={field.label}
-                          label={field.label}
-                          value={field.value}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/70 px-4 py-5 text-sm text-zinc-600">
-                      No profile fields were returned by the current backend
-                      response for this rep.
-                    </div>
-                  )}
-                </SectionCard>
               </div>
 
               <details className="mt-5">
