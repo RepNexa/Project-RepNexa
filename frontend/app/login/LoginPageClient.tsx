@@ -1,5 +1,5 @@
 "use client";
-
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -108,14 +108,16 @@ export default function LoginPageClient({ portal }: { portal: string }) {
     <div className="min-h-screen bg-[linear-gradient(180deg,#f6f1ff_0%,#f8f5ff_42%,#ffffff_100%)] px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-xl font-bold text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)]">
-              R
-            </div>
-            <div className="text-2xl font-semibold tracking-tight text-zinc-900">
-              repnexa
-            </div>
-          </Link>
+          <Link href="/" className="flex items-center">
+  <Image
+    src="/repnexa_logo.svg"
+    alt="Repnexa"
+    width={170}
+    height={44}
+    className="h-10 w-auto object-contain sm:h-11"
+    priority
+  />
+</Link>
 
           <Link
             href="/"
