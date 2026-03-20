@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ApiError } from "@/src/lib/api/types";
 import {
   createDoctor,
@@ -99,6 +100,8 @@ export default function DoctorsPage() {
     fallbackFilename: "admin-doctors.csv",
   });
 
+  const router = useRouter();
+
   const [rows, setRows] = useState<Doctor[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"ACTIVE" | "RETIRED" | "ALL">("ACTIVE");
@@ -122,6 +125,7 @@ export default function DoctorsPage() {
       setErr(e as ApiError);
     }
   }
+
   useEffect(() => {
     void reload();
   }, []);
@@ -150,13 +154,14 @@ export default function DoctorsPage() {
   }
 
   async function onToggleStatus(d: DoctorRow) {
-    const cur = ((d.status ?? "ACTIVE") as string).toUpperCase();
+    const cur = String(d.status ?? "ACTIVE").toUpperCase();
     const next = cur === "RETIRED" ? "ACTIVE" : "RETIRED";
     const msg =
       next === "RETIRED"
         ? "Mark this doctor as RETIRED? They will be hidden from operational dashboards."
         : "Mark this doctor as ACTIVE again?";
     if (!confirm(msg)) return;
+
     setBusy(true);
     setErr(null);
     try {
@@ -173,6 +178,14 @@ export default function DoctorsPage() {
     new Set((rows as DoctorRow[]).map((d) => d.specialty).filter(Boolean)),
   ).sort((a, b) => String(a).localeCompare(String(b)));
 
+  const locations = Array.from(
+    new Set(
+      (rows as DoctorRow[])
+        .flatMap((d) => (d.locations ?? []).filter(Boolean))
+        .map((x) => String(x)),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
   const filtered = (rows as DoctorRow[])
     .filter((d) => !d.deleted)
     .filter((d) => {
@@ -186,6 +199,11 @@ export default function DoctorsPage() {
         : (d.specialty ?? "") === specialtyFilter,
     )
     .filter((d) => {
+      if (location === "ALL") return true;
+      const locs = d.locations ?? [];
+      return locs.includes(location);
+    })
+    .filter((d) => {
       const qq = q.trim().toLowerCase();
       if (!qq) return true;
       return (
@@ -196,10 +214,9 @@ export default function DoctorsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
       <Card>
-        <div className="grid gap-4 md:grid-cols-[1.6fr_220px_220px_220px_220px_auto] md:items-end">
-          <div>
+        <div className="grid gap-4 md:grid-cols-6 md:items-end">
+          <div className="min-w-0">
             <div className="mb-1 text-xs text-zinc-500">
               Search doctor master
             </div>
@@ -209,7 +226,8 @@ export default function DoctorsPage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="mb-1 text-xs text-zinc-500">Status</div>
             <PillSelect
               value={status}
@@ -222,17 +240,23 @@ export default function DoctorsPage() {
               <option value="ALL">All</option>
             </PillSelect>
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="mb-1 text-xs text-zinc-500">Location</div>
             <PillSelect
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              disabled
             >
-              <option value="ALL">select a location</option>
+              <option value="ALL">All locations</option>
+              {locations.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
             </PillSelect>
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="mb-1 text-xs text-zinc-500">Speciality</div>
             <PillSelect
               value={specialtyFilter}
@@ -246,7 +270,8 @@ export default function DoctorsPage() {
               ))}
             </PillSelect>
           </div>
-          <div>
+
+          <div className="min-w-0">
             <div className="mb-1 text-xs text-zinc-500">Grade</div>
             <PillSelect
               value={grade}
@@ -258,6 +283,7 @@ export default function DoctorsPage() {
               <option value="C">C</option>
             </PillSelect>
           </div>
+
           <div className="flex md:justify-end">
             <PrimaryButton type="button" onClick={() => setAddOpen(true)}>
               + Add doctor
@@ -266,7 +292,6 @@ export default function DoctorsPage() {
         </div>
       </Card>
 
-      {/* Add panel */}
       {addOpen ? (
         <Card className="max-w-3xl">
           <div className="flex items-start justify-between">
@@ -345,7 +370,6 @@ export default function DoctorsPage() {
         </Card>
       ) : null}
 
-      {/* Table */}
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -382,54 +406,92 @@ export default function DoctorsPage() {
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.map((d) => (
-                <tr key={d.id} className="border-t border-zinc-100">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{d.name}</div>
-                    {d.specialty ? (
-                      <div className="text-xs text-zinc-500">{d.specialty}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
-                      {((d as DoctorRow).grade ?? "—") as any}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3">
-                    {String(
-                      (d as DoctorRow).status ?? "ACTIVE",
-                    ).toUpperCase() === "RETIRED" ? (
-                      <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                        Retired
+              {filtered.map((d) => {
+                const row = d as DoctorRow;
+                const isRetired =
+                  String(row.status ?? "ACTIVE").toUpperCase() === "RETIRED";
+
+                return (
+                  <tr key={d.id} className="border-t border-zinc-100">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{d.name}</div>
+                      {d.specialty ? (
+                        <div className="text-xs text-zinc-500">
+                          {d.specialty}
+                        </div>
+                      ) : null}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+                        {(row.grade ?? "—") as any}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                        Active
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3 text-zinc-600">—</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      className="text-violet-700 hover:underline"
-                      disabled={busy}
-                      onClick={() => onToggleStatus(d as DoctorRow)}
-                      title="Toggle ACTIVE/RETIRED"
-                    >
-                      {String(
-                        (d as DoctorRow).status ?? "ACTIVE",
-                      ).toUpperCase() === "RETIRED"
-                        ? "Activate"
-                        : "Retire"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {row.locations?.length ? row.locations.join(", ") : "—"}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {isRetired ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                          Retired
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                          Active
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {row.primaryRep ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {row.secondaryRep ?? "—"}
+                    </td>
+
+                    <td className="px-4 py-3 text-zinc-600">
+                      {row.lastUpdated
+                        ? new Date(row.lastUpdated).toLocaleString()
+                        : "—"}
+                    </td>
+
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          className="text-violet-700 hover:underline disabled:opacity-50"
+                          onClick={() =>
+                            router.push(`/admin/doctors/${d.id}/edit`)
+                          }
+                          disabled={busy}
+                          title="Edit doctor"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          className={[
+                            "hover:underline disabled:opacity-50",
+                            isRetired ? "text-green-700" : "text-amber-700",
+                          ].join(" ")}
+                          disabled={busy}
+                          onClick={() => onToggleStatus(row)}
+                          title="Toggle ACTIVE/RETIRED"
+                        >
+                          {isRetired ? "Activate" : "Retire"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-6 text-zinc-500">
