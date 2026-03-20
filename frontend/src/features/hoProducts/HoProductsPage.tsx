@@ -452,7 +452,7 @@ export function HoProductsPage() {
 
   return (
     <div className="w-full bg-[#f6f7fb]">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6">
+      <div className="w-full px-4 py-6 md:px-6">
         <style jsx global>{`
           .product-calls-chart,
           .product-calls-chart * {
