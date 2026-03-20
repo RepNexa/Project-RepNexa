@@ -506,9 +506,9 @@ export function HoRepsPage() {
                     onPeriodChange(e.target.value as DrilldownPeriod)
                   }
                 >
-                  <option value="THIS_MONTH">THIS_MONTH</option>
-                  <option value="LAST_MONTH">LAST_MONTH</option>
-                  <option value="CUSTOM">CUSTOM</option>
+                  <option value="THIS_MONTH">This Month</option>
+                  <option value="LAST_MONTH">Last Month</option>
+                  <option value="CUSTOM">Custom</option>
                 </select>
               </div>
 
