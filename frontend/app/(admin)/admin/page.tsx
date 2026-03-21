@@ -1,4 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import Page from "@/src/features/adminMaster/pages/legacy/AdminHome";
-export default Page;
+export default function AdminLandingRedirect() {
+  redirect("/ho/overview");
+}
