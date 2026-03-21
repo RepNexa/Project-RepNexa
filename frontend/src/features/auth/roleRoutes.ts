@@ -5,9 +5,9 @@ export function routeForRole(role: Role): string {
     case "MR":
       return "/rep";
     case "FM":
-      return "/ho";
+      return "/ho/overview";
     case "CM":
-      return "/admin";
+      return "/ho/overview";
     default:
       return "/login";
   }
