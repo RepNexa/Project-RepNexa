@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ApiError } from "@/src/lib/api/types";
+import { isApiError } from "@/src/lib/api/types";
 import {
   createRepRouteAssignment,
   listRepRouteAssignments,
@@ -9,26 +9,131 @@ import {
   type RepRouteAssignment,
 } from "@/src/features/assignments/api";
 
+type NoticeTone = "info" | "success" | "error";
+
+type Notice = {
+  tone: NoticeTone;
+  title: string;
+  message: string;
+  detail?: string;
+};
+
+function NoticeBanner({ notice }: { notice: Notice }) {
+  const toneClass =
+    notice.tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : notice.tone === "error"
+        ? "border-rose-200 bg-rose-50 text-rose-900"
+        : "border-violet-200 bg-violet-50 text-violet-900";
+
+  return (
+    <div className={["rounded-xl border p-4 text-sm", toneClass].join(" ")}>
+      <div className="font-medium">{notice.title}</div>
+      <div className="mt-1 leading-6">{notice.message}</div>
+      {notice.detail ? (
+        <div className="mt-2 text-xs opacity-80">{notice.detail}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function describeApiError(error: unknown, fallback: string): Notice {
+  if (!isApiError(error)) {
+    return {
+      tone: "error",
+      title: "Request failed",
+      message: fallback,
+    };
+  }
+
+  const detail = error.fieldErrors?.length
+    ? error.fieldErrors.map((item) => `${item.field}: ${item.message}`).join(" • ")
+    : undefined;
+
+  switch (error.code) {
+    case "ASSIGNMENT_OVERLAP":
+      return {
+        tone: "error",
+        title: "Assignment already exists",
+        message:
+          "This rep already has an overlapping assignment for the selected route and date range.",
+        detail,
+      };
+    case "USER_NOT_FOUND":
+      return {
+        tone: "error",
+        title: "Rep not found",
+        message: "The selected rep username does not exist.",
+        detail,
+      };
+    case "ROUTE_NOT_FOUND":
+      return {
+        tone: "error",
+        title: "Route not found",
+        message: "The selected route could not be found.",
+        detail,
+      };
+    case "USER_DISABLED":
+      return {
+        tone: "error",
+        title: "Rep is disabled",
+        message: "This assignment cannot be saved because the selected rep is disabled.",
+        detail,
+      };
+    case "ASSIGNMENT_NOT_FOUND":
+      return {
+        tone: "error",
+        title: "Assignment not found",
+        message: "The selected assignment ID could not be found.",
+        detail,
+      };
+    case "VALIDATION_ERROR":
+      return {
+        tone: "error",
+        title: "Check the form",
+        message: error.message,
+        detail,
+      };
+    case "FORBIDDEN":
+      return {
+        tone: "error",
+        title: "Not allowed",
+        message: "You do not have permission to manage this assignment.",
+        detail,
+      };
+    default:
+      return {
+        tone: "error",
+        title: `Request failed (${error.status})`,
+        message: error.message || fallback,
+        detail,
+      };
+  }
+}
+
 export function AssignmentsPage() {
   const [repUsername, setRepUsername] = useState("mr@repnexa.local");
   const [routeId, setRouteId] = useState("");
   const [startDate, setStartDate] = useState("2026-01-09");
   const [endDate, setEndDate] = useState("");
-  const [created, setCreated] = useState<RepRouteAssignment | null>(null);
 
   const [patchId, setPatchId] = useState("");
   const [patchEndDate, setPatchEndDate] = useState("");
   const [patchDisable, setPatchDisable] = useState(false);
 
   const [assignments, setAssignments] = useState<RepRouteAssignment[]>([]);
-  const [error, setError] = useState<ApiError | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function reloadAssignments() {
+  async function reloadAssignments(options?: { notifyOnError?: boolean }) {
     try {
       setAssignments(await listRepRouteAssignments());
+      return true;
     } catch (e) {
-      setError(e as ApiError);
+      if (options?.notifyOnError ?? true) {
+        setNotice(describeApiError(e, "Could not load assignments."));
+      }
+      return false;
     }
   }
 
@@ -38,7 +143,12 @@ export function AssignmentsPage() {
 
   async function onCreate() {
     setBusy(true);
-    setError(null);
+    setNotice({
+      tone: "info",
+      title: "Creating assignment",
+      message: "The rep-to-route assignment is being created.",
+    });
+
     try {
       const res = await createRepRouteAssignment({
         repUsername,
@@ -46,12 +156,19 @@ export function AssignmentsPage() {
         startDate,
         endDate: endDate ? endDate : null,
       });
-      setCreated(res);
       setPatchId(String(res.id));
 
-      await reloadAssignments();
+      const refreshed = await reloadAssignments({ notifyOnError: false });
+      setNotice({
+        tone: "success",
+        title: "Assignment created",
+        message: `${res.repUsername ?? "Rep"} was assigned to route ${res.routeId} starting ${res.startDate}${res.endDate ? ` until ${res.endDate}` : ""}.`,
+        detail: refreshed
+          ? "The latest assignments table has been refreshed."
+          : "The assignment was saved, but the table could not be refreshed automatically.",
+      });
     } catch (e) {
-      setError(e as ApiError);
+      setNotice(describeApiError(e, "Could not create the assignment."));
     } finally {
       setBusy(false);
     }
@@ -59,17 +176,29 @@ export function AssignmentsPage() {
 
   async function onPatch() {
     setBusy(true);
-    setError(null);
+    setNotice({
+      tone: "info",
+      title: "Updating assignment",
+      message: "The selected assignment is being updated.",
+    });
+
     try {
       const res = await patchRepRouteAssignment(Number(patchId), {
         endDate: patchEndDate ? patchEndDate : undefined,
         enabled: patchDisable ? false : undefined,
       });
-      setCreated(res);
 
-      await reloadAssignments();
+      const refreshed = await reloadAssignments({ notifyOnError: false });
+      setNotice({
+        tone: "success",
+        title: "Assignment updated",
+        message: `Assignment ${res.id} was updated successfully.${res.enabled ? " It remains enabled." : " It is now disabled."}`,
+        detail: refreshed
+          ? "The latest assignments table has been refreshed."
+          : "The assignment was saved, but the table could not be refreshed automatically.",
+      });
     } catch (e) {
-      setError(e as ApiError);
+      setNotice(describeApiError(e, "Could not update the assignment."));
     } finally {
       setBusy(false);
     }
@@ -84,10 +213,10 @@ export function AssignmentsPage() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Assignments</h1>
 
-      {/* Card */}
       <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
         <div className="space-y-6">
-          {/* Create section */}
+          {notice ? <NoticeBanner notice={notice} /> : null}
+
           <section>
             <h2 className="text-base font-semibold text-zinc-900">
               Assign rep to route
@@ -163,7 +292,6 @@ export function AssignmentsPage() {
 
           <div className="h-px bg-zinc-100" />
 
-          {/* Patch section */}
           <section>
             <h2 className="text-base font-semibold text-zinc-900">
               End / disable assignment
@@ -222,22 +350,9 @@ export function AssignmentsPage() {
               </button>
             </div>
           </section>
-
-          {error ? (
-            <pre className="mt-2 overflow-auto rounded-xl bg-rose-50 p-4 text-xs text-rose-700 ring-1 ring-rose-200">
-              {JSON.stringify(error, null, 2)}
-            </pre>
-          ) : null}
-
-          {created ? (
-            <pre className="mt-2 overflow-auto rounded-xl bg-zinc-50 p-4 text-xs text-zinc-700 ring-1 ring-zinc-200">
-              {JSON.stringify(created, null, 2)}
-            </pre>
-          ) : null}
         </div>
       </div>
 
-      {/* Table under the card */}
       <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -298,7 +413,7 @@ export function AssignmentsPage() {
 
         <button
           type="button"
-          onClick={reloadAssignments}
+          onClick={() => void reloadAssignments()}
           className="mt-4 h-10 rounded-xl border border-zinc-200 bg-white px-5 text-sm hover:bg-zinc-50"
         >
           Refresh table
