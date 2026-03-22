@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ApiError } from "@/src/lib/api/types";
@@ -135,7 +134,7 @@ function SectionCard({
   contentClassName?: string;
 }) {
   return (
-    <section className={pageCard(`min-w-0 overflow-hidden ${className}`)}>
+    <section className={pageCard(`min-w-0 ${className}`)}>
       {(title || subtitle) && (
         <div className="border-b border-zinc-100 px-5 py-4 sm:px-6">
           {title ? (
@@ -318,7 +317,11 @@ function TableCell({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <td className={`px-4 py-3.5 align-top text-zinc-700 ${className}`}>{children}</td>;
+  return (
+    <td className={`px-4 py-3.5 align-top text-zinc-700 ${className}`}>
+      {children}
+    </td>
+  );
 }
 
 export function HoChemistsPage() {
@@ -587,38 +590,31 @@ export function HoChemistsPage() {
   return (
     <div className="w-full bg-[#f6f7fb]">
       <div className="w-full px-2 py-6 md:px-4">
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6">
           <div>
             <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-950">
-              Chemist Detail
+              Chemists
             </h1>
             <p className="mt-1 text-sm text-zinc-600">
               Search and drill into chemist analytics with a unified dashboard
               layout.
             </p>
           </div>
-
-          <Link
-            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-            href="/ho"
-          >
-            Back
-          </Link>
         </div>
 
         {err ? <ApiErrorBanner err={err} /> : null}
         {notFoundMsg ? <EmptyCard title={notFoundMsg} /> : null}
 
         <SectionCard
-          className="mb-6"
-          contentClassName="space-y-5"
+          className="mb-6 overflow-visible"
+          contentClassName="overflow-visible"
         >
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.9fr]">
-            <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          <div className="grid grid-cols-1 gap-0 xl:grid-cols-[1.2fr_0.9fr]">
+            <div className="relative z-20 min-w-0 border-r border-zinc-200/80 pr-0 xl:pr-6">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
                 Search
               </div>
-              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4">
+              <div className="rounded-[24px] border border-zinc-200/80 bg-zinc-50/70 p-5">
                 <SimpleTypeahead<number>
                   key={String(chemistId ?? "none")}
                   label="Chemist"
@@ -657,11 +653,11 @@ export function HoChemistsPage() {
               </div>
             </div>
 
-            <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            <div className="relative z-30 min-w-0 pt-5 xl:pt-0 xl:pl-6">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
                 Filters
               </div>
-              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/70 p-4">
+              <div className="rounded-[24px] border border-zinc-200/80 bg-zinc-50/70 p-5">
                 <DrilldownFilterBar
                   value={rawFilters}
                   onChange={onFilters}
@@ -743,6 +739,7 @@ export function HoChemistsPage() {
               <SectionCard
                 title="Chemist Profile"
                 subtitle="Basic information and recent signals for this outlet"
+                className="overflow-hidden"
               >
                 <div className="space-y-5">
                   <div className="flex flex-wrap gap-2">
@@ -803,7 +800,7 @@ export function HoChemistsPage() {
               <SectionCard
                 title="Visits to This Chemist Over Time"
                 subtitle="Weekly chemist visit trend"
-                className="min-w-0"
+                className="min-w-0 overflow-hidden"
               >
                 <div className="flex min-w-0 flex-col">
                   <div className="min-w-0 rounded-2xl border border-zinc-200/70 bg-zinc-50/60 p-4">
@@ -837,6 +834,7 @@ export function HoChemistsPage() {
               <SectionCard
                 title="Stock-Out History – This Chemist"
                 subtitle={`OOS events by product at ${chemistName}`}
+                className="overflow-hidden"
               >
                 <TableShell>
                   <table className="min-w-full border-collapse text-sm">
@@ -898,6 +896,7 @@ export function HoChemistsPage() {
               <SectionCard
                 title="Recent Visits & Notes – This Chemist"
                 subtitle="Combines visit log and available product flags"
+                className="overflow-hidden"
               >
                 <TableShell>
                   <table className="min-w-full border-collapse text-sm">

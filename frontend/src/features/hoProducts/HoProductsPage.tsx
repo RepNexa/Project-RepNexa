@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ApiError } from "@/src/lib/api/types";
@@ -466,7 +465,7 @@ export function HoProductsPage() {
           }
         `}</style>
 
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6">
           <div>
             <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-950">
               Products
@@ -476,13 +475,6 @@ export function HoProductsPage() {
               layout.
             </div>
           </div>
-
-          <Link
-            href="/ho"
-            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-          >
-            Back
-          </Link>
         </div>
 
         {(lookupErr || notFoundMsg || detailsQ.error) && (
@@ -505,9 +497,12 @@ export function HoProductsPage() {
 
         {!isSelected ? (
           <>
-            <SectionCard className="mb-6" contentClassName="space-y-5">
+            <SectionCard
+              className="mb-6 relative z-10 overflow-visible"
+              contentClassName="space-y-5 overflow-visible"
+            >
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.9fr]">
-                <div>
+                <div className="relative z-20">
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
                     Search
                   </div>
@@ -543,7 +538,7 @@ export function HoProductsPage() {
                   </div>
                 </div>
 
-                <div>
+                <div className="relative z-30">
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
                     Filters
                   </div>
@@ -583,9 +578,12 @@ export function HoProductsPage() {
           </>
         ) : (
           <>
-            <SectionCard className="mb-6" contentClassName="space-y-5">
+            <SectionCard
+              className="mb-6 relative z-10 overflow-visible"
+              contentClassName="space-y-5 overflow-visible"
+            >
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.9fr]">
-                <div>
+                <div className="relative z-20">
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
                     Search
                   </div>
@@ -620,7 +618,7 @@ export function HoProductsPage() {
                   </div>
                 </div>
 
-                <div>
+                <div className="relative z-30">
                   <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
                     Filters
                   </div>

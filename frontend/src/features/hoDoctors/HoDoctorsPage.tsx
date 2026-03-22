@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ApiError } from "@/src/lib/api/types";
@@ -688,7 +687,7 @@ export function HoDoctorsPage() {
   return (
     <div className="w-full bg-[#f6f7fb]">
       <div className="w-full px-2 py-6 md:px-4">
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6">
           <div>
             <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-900">
               Doctors
@@ -698,13 +697,6 @@ export function HoDoctorsPage() {
               layout.
             </div>
           </div>
-
-          <Link
-            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-            href="/ho"
-          >
-            Back
-          </Link>
         </div>
 
         {err && <ApiErrorBanner err={err} />}
@@ -718,93 +710,97 @@ export function HoDoctorsPage() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.9fr]">
-          <SectionCard
-            title="Search"
-            subtitle="Find a doctor by name or enter a direct doctor ID."
-          >
-            {!doctorId || searchOpen ? (
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
-                  <SimpleTypeahead<number>
-                    key={
-                      searchOpen ? "doctor-search-open" : "doctor-search-closed"
-                    }
-                    label="Doctor"
-                    placeholder="Type a name…"
-                    fetchOptions={fetchOptions}
-                    onSelect={(opt) => onSelectDoctor(opt.value)}
-                  />
-                </div>
+        <div className={pageCard("mb-5 p-5 md:p-6")}>
+          <div className="grid grid-cols-1 gap-0 xl:grid-cols-[1.2fr_0.9fr]">
+            <div className="relative z-20 min-w-0 border-r-0 xl:border-r xl:border-zinc-200/80 xl:pr-6">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Search
+              </div>
 
-                {lookupErr ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-                    Lookup unavailable:{" "}
-                    <span className="font-mono">{lookupErr.status}</span>{" "}
-                    <span className="font-mono">{lookupErr.code}</span>.
-                  </div>
-                ) : null}
-
-                <div>
-                  <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                    Or enter doctor ID
-                  </div>
-                  <input
-                    className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-zinc-300 focus:ring-2 focus:ring-zinc-100"
-                    type="number"
-                    min={1}
-                    value={doctorId ?? ""}
-                    placeholder="e.g. 12"
-                    onChange={(e) => {
-                      const v = e.target.value ? Number(e.target.value) : null;
-                      if (!v) {
-                        router.replace(
-                          buildUrlWithParams(pathname, sp, {
-                            doctorId: null,
-                            page: 0,
-                          }),
-                        );
-                      } else {
-                        onSelectDoctor(v);
+              <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                {!doctorId || searchOpen ? (
+                  <div className="space-y-4">
+                    <SimpleTypeahead<number>
+                      key={
+                        searchOpen ? "doctor-search-open" : "doctor-search-closed"
                       }
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                    Selected doctor
-                  </div>
-                  <div className="mt-1 truncate text-lg font-semibold text-zinc-900">
-                    {doctorName}
-                  </div>
-                  <div className="mt-1 text-sm text-zinc-500">ID #{doctorId}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSearchOpen(true)}
-                  className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
-                >
-                  Change
-                </button>
-              </div>
-            )}
-          </SectionCard>
+                      label="Doctor"
+                      placeholder="Type a name…"
+                      fetchOptions={fetchOptions}
+                      onSelect={(opt) => onSelectDoctor(opt.value)}
+                    />
 
-          <SectionCard
-            title="Filters"
-            subtitle="Keep the existing period and date logic unchanged."
-          >
-            <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
-              <DrilldownFilterBar
-                value={rawFilters}
-                onChange={onFilters}
-                isFetching={detailsQ.isFetching}
-              />
+                    {lookupErr ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                        Lookup unavailable:{" "}
+                        <span className="font-mono">{lookupErr.status}</span>{" "}
+                        <span className="font-mono">{lookupErr.code}</span>.
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                        Or enter doctor ID
+                      </div>
+                      <input
+                        className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-zinc-300 focus:ring-2 focus:ring-zinc-100"
+                        type="number"
+                        min={1}
+                        value={doctorId ?? ""}
+                        placeholder="e.g. 12"
+                        onChange={(e) => {
+                          const v = e.target.value ? Number(e.target.value) : null;
+                          if (!v) {
+                            router.replace(
+                              buildUrlWithParams(pathname, sp, {
+                                doctorId: null,
+                                page: 0,
+                              }),
+                            );
+                          } else {
+                            onSelectDoctor(v);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                        Selected doctor
+                      </div>
+                      <div className="mt-1 truncate text-lg font-semibold text-zinc-900">
+                        {doctorName}
+                      </div>
+                      <div className="mt-1 text-sm text-zinc-500">ID #{doctorId}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSearchOpen(true)}
+                      className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+                    >
+                      Change
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </SectionCard>
+
+            <div className="relative z-30 min-w-0 pt-5 xl:pt-0 xl:pl-6">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Filters
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                <DrilldownFilterBar
+                  value={rawFilters}
+                  onChange={onFilters}
+                  isFetching={detailsQ.isFetching}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-5">
