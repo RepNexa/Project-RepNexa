@@ -9,7 +9,7 @@ export default function TerritoriesPage() {
     <AppShell title="Admin (CM) – Territories">
       <RequireRole role="CM">
         <AdminList
-          title="GET /api/v1/admin/territories"
+          title="Territories"
           endpoint="/admin/territories"
         />
       </RequireRole>
