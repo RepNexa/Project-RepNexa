@@ -1,18 +1,26 @@
 package com.repnexa.modules.reports.rep;
 
-import com.repnexa.modules.analytics.rep.RepAnalyticsController;
-import com.repnexa.modules.reports.common.CsvWriter;
-import com.repnexa.modules.reports.common.ReportBinary;
-import com.repnexa.modules.reports.common.ReportFormatters;
-import static com.repnexa.modules.reports.common.DashboardPdfModels.*;
-import com.repnexa.modules.reports.common.DashboardPdfRenderer;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+
+import com.repnexa.modules.analytics.rep.RepAnalyticsController;
+import com.repnexa.modules.reports.common.CsvWriter;
+import com.repnexa.modules.reports.common.DashboardPdfModels.DashboardPdfDocument;
+import com.repnexa.modules.reports.common.DashboardPdfModels.KpiItem;
+import com.repnexa.modules.reports.common.DashboardPdfModels.MetaItem;
+import com.repnexa.modules.reports.common.DashboardPdfModels.SectionBlock;
+import com.repnexa.modules.reports.common.DashboardPdfModels.TableBlock;
+import com.repnexa.modules.reports.common.DashboardPdfModels.TextBlock;
+import com.repnexa.modules.reports.common.DashboardPdfRenderer;
+import com.repnexa.modules.reports.common.ReportBinary;
+import com.repnexa.modules.reports.common.ReportFormatters;
 
 @Service
 public class RepDetailsReportExportService {
@@ -56,11 +64,11 @@ public class RepDetailsReportExportService {
         var details = analytics.repDetails(
                 new RepAnalyticsController.RepDetailsRequest(
                         req.period(),
-                        req.dateFrom(),
-                        req.dateTo(),
                         req.routeIds(),
                         req.fieldManagerId(),
-                        req.repUserId()
+                        req.repUserId(),
+                        req.dateFrom(),
+                        req.dateTo()
                 ),
                 auth
         );
@@ -119,14 +127,15 @@ public class RepDetailsReportExportService {
         csv.row();
 
         csv.row("Rep Detail Rows");
-        csv.row("Rep User ID", "Rep Name", "Visit Count", "Unique Doctors", "Last Visit Date");
+        csv.row("Rep User ID", "Rep Name", "Visit Count", "Unique Doctors", "Last Visit Date", "Total Mileage Km");
         for (var x : data.details().rows()) {
             csv.row(
                     x.repUserId(),
                     x.repName(),
                     x.visitCount(),
                     x.uniqueDoctors(),
-                    ReportFormatters.fmtDate(x.lastVisitDate())
+                    ReportFormatters.fmtDate(x.lastVisitDate()),
+                    x.totalMileageKm() == null ? "" : x.totalMileageKm().toPlainString()
             );
         }
         csv.row();
@@ -165,6 +174,10 @@ public class RepDetailsReportExportService {
                 .max(LocalDate::compareTo)
                 .orElse(null);
 
+        BigDecimal totalMileage = data.details().rows().stream()
+                .map(x -> x.totalMileageKm() == null ? BigDecimal.ZERO : x.totalMileageKm())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         List<MetaItem> meta = List.of(
                 new MetaItem("Date From", ReportFormatters.fmtDate(data.dateFrom())),
                 new MetaItem("Date To", ReportFormatters.fmtDate(data.dateTo())),
@@ -177,7 +190,8 @@ public class RepDetailsReportExportService {
                 new KpiItem("Rep Rows", String.valueOf(data.details().rows().size())),
                 new KpiItem("Visit Count", String.valueOf(totalVisits)),
                 new KpiItem("Unique Doctors", String.valueOf(totalUniqueDoctors)),
-                new KpiItem("Last Visit Date", ReportFormatters.fmtDate(latestVisit))
+                new KpiItem("Last Visit Date", ReportFormatters.fmtDate(latestVisit)),
+                new KpiItem("Total Mileage Km", totalMileage.stripTrailingZeros().toPlainString())
         );
 
         List<SectionBlock> sections = new ArrayList<>();
@@ -190,14 +204,15 @@ public class RepDetailsReportExportService {
                 List.of(
                         new TableBlock(
                                 "Rep Detail Rows",
-                                List.of("Rep User ID", "Rep Name", "Visit Count", "Unique Doctors", "Last Visit Date"),
+                                List.of("Rep User ID", "Rep Name", "Visit Count", "Unique Doctors", "Last Visit Date", "Total Mileage Km"),
                                 data.details().rows().stream()
                                         .map(x -> List.of(
                                                 String.valueOf(x.repUserId()),
                                                 ReportFormatters.safe(x.repName()),
                                                 String.valueOf(x.visitCount()),
                                                 String.valueOf(x.uniqueDoctors()),
-                                                ReportFormatters.fmtDate(x.lastVisitDate())
+                                                ReportFormatters.fmtDate(x.lastVisitDate()),
+                                                x.totalMileageKm() == null ? "" : x.totalMileageKm().stripTrailingZeros().toPlainString()
                                         ))
                                         .toList()
                         )
