@@ -9,7 +9,6 @@ import { SimpleTypeahead } from "@/src/features/shared/components/SimpleTypeahea
 import {
   ApiErrorBanner,
   EmptyCard,
-  RawJson,
   SkeletonBox,
 } from "@/src/features/hoDrilldowns/common/UiParts";
 import {
@@ -393,25 +392,14 @@ export function HoRepsPage() {
   const lastVisit =
     pickStr(row0, ["lastVisitDate", "lastCallDate", "lastVisit"]) ?? null;
 
-  const avgPerMonth = React.useMemo(() => {
-    const df = range?.dateFrom ?? "";
-    const dt = range?.dateTo ?? "";
-    if (!df || !dt) return null;
-
-    const da = new Date(df);
-    const db = new Date(dt);
-    const ms = +db - +da;
-
-    const days = !Number.isFinite(ms)
-      ? 1
-      : Math.max(1, Math.round(ms / 86400000) + 1);
-
-    const months = Math.max(1, days / 30);
-    return (activityItems.length / months).toFixed(1);
-  }, [range?.dateFrom, range?.dateTo, activityItems.length]);
+  const totalMileage =
+    pickNum(row0, ["totalMileageKm", "total_mileage_km"]) ?? null;
 
   const showExpandedSections =
-    typeof repId === "number" && repId > 0 && !detailsQ.isLoading && !detailsQ.error;
+    typeof repId === "number" &&
+    repId > 0 &&
+    !detailsQ.isLoading &&
+    !detailsQ.error;
 
   const visibleActivityRows = showAllActivityRows
     ? activityItems
@@ -594,9 +582,9 @@ export function HoRepsPage() {
                 />
 
                 <KpiCard
-                  label="Avg Visits / Month"
-                  value={avgPerMonth ?? "—"}
-                  helper="Derived from visit log in selected window."
+                  label="Mileage"
+                  value={totalMileage != null ? `${totalMileage} km` : "—"}
+                  helper="Total mileage in selected window."
                 />
 
                 <KpiCard
@@ -605,15 +593,6 @@ export function HoRepsPage() {
                   helper="From rep details response."
                 />
               </div>
-
-              <details className="mt-5">
-                <summary className="cursor-pointer text-sm text-zinc-600 hover:text-zinc-800">
-                  Debug: raw response
-                </summary>
-                <div className="mt-3">
-                  <RawJson data={detailsQ.data} />
-                </div>
-              </details>
             </>
           )}
         </div>
