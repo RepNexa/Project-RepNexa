@@ -99,7 +99,10 @@ public final class HttpSessionClient {
     }
 
     private String ensureCsrfToken() throws Exception {
-        // Refresh each time; cheap and ensures cookie+token are aligned.
+        if (this.csrfToken != null && !this.csrfToken.isBlank()) {
+            return this.csrfToken;
+        }
+
         HttpResponse<String> res = get("/auth/csrf");
         assertEquals(200, res.statusCode(), "csrf endpoint must be 200. body=" + res.body());
         Map<?, ?> m = OM.readValue(res.body(), Map.class);
