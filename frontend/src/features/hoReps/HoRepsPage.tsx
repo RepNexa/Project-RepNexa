@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ApiError } from "@/src/lib/api/types";
 import { SimpleTypeahead } from "@/src/features/shared/components/SimpleTypeahead";
+import { DrilldownFilterBar } from "@/src/features/hoDrilldowns/common/FilterBar";
 import {
   ApiErrorBanner,
   EmptyCard,
@@ -318,31 +318,13 @@ export function HoRepsPage() {
     router.replace(buildUrlWithParams(pathname, sp, { repId: id }));
   };
 
-  const onPeriodChange = (p: DrilldownPeriod) => {
+  const onFilters = (next: DrilldownFilters) => {
     setNotFoundMsg(null);
     router.replace(
       buildUrlWithParams(pathname, sp, {
-        period: p,
-        dateFrom: p === "CUSTOM" ? (filters.dateFrom ?? null) : null,
-        dateTo: p === "CUSTOM" ? (filters.dateTo ?? null) : null,
-      }),
-    );
-  };
-
-  const onCustomDateFrom = (v: string) => {
-    router.replace(
-      buildUrlWithParams(pathname, sp, {
-        period: "CUSTOM",
-        dateFrom: v || null,
-      }),
-    );
-  };
-
-  const onCustomDateTo = (v: string) => {
-    router.replace(
-      buildUrlWithParams(pathname, sp, {
-        period: "CUSTOM",
-        dateTo: v || null,
+        period: next.period,
+        dateFrom: next.period === "CUSTOM" ? (next.dateFrom ?? null) : null,
+        dateTo: next.period === "CUSTOM" ? (next.dateTo ?? null) : null,
       }),
     );
   };
@@ -422,7 +404,7 @@ export function HoRepsPage() {
   return (
     <div className="w-full bg-[#f6f7fb]">
       <div className="w-full px-2 py-6 md:px-4">
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6">
           <div>
             <h1 className="text-[2rem] font-semibold tracking-tight text-zinc-900">
               Reps
@@ -432,114 +414,73 @@ export function HoRepsPage() {
               layout.
             </div>
           </div>
-
-          <Link
-            className="inline-flex h-11 shrink-0 items-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50"
-            href="/ho"
-          >
-            Back
-          </Link>
         </div>
 
         {err && <ApiErrorBanner err={err} />}
         {notFoundMsg ? <EmptyCard title={notFoundMsg} /> : null}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.9fr]">
-          <SectionCard
-            title="Search"
-            subtitle="Find a rep by name or enter a direct rep ID."
-          >
-            <div className="space-y-4">
+        <div className={card("mb-5 p-5 md:p-6")}>
+          <div className="grid grid-cols-1 gap-0 xl:grid-cols-[1.2fr_0.9fr]">
+            <div className="relative z-20 min-w-0 border-r-0 xl:border-r xl:border-zinc-200/80 xl:pr-6">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Search
+              </div>
+
               <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
-                <SimpleTypeahead<number>
-                  key={`rep-typeahead-${typeaheadResetKey}`}
-                  label="Rep"
-                  placeholder="Type a name…"
-                  fetchOptions={fetchOptions}
-                  onSelect={(opt) => onSelect(opt.value)}
-                />
-              </div>
+                <div className="space-y-4">
+                  <SimpleTypeahead<number>
+                    key={`rep-typeahead-${typeaheadResetKey}`}
+                    label="Rep"
+                    placeholder="Type a name…"
+                    fetchOptions={fetchOptions}
+                    onSelect={(opt) => onSelect(opt.value)}
+                  />
 
-              {lookupErr ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-                  Lookup unavailable:{" "}
-                  <span className="font-mono">{lookupErr.status}</span>{" "}
-                  <span className="font-mono">{lookupErr.code}</span>. Use the ID
-                  input.
-                </div>
-              ) : null}
+                  {lookupErr ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                      Lookup unavailable:{" "}
+                      <span className="font-mono">{lookupErr.status}</span>{" "}
+                      <span className="font-mono">{lookupErr.code}</span>. Use the ID
+                      input.
+                    </div>
+                  ) : null}
 
-              <div>
-                <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                  Or enter rep ID
-                </div>
-                <input
-                  className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:ring-2 focus:ring-violet-200"
-                  type="number"
-                  min={1}
-                  value={repId ?? ""}
-                  placeholder="e.g. 3"
-                  onChange={(e) => {
-                    const v = e.target.value ? Number(e.target.value) : null;
-                    router.replace(
-                      buildUrlWithParams(pathname, sp, { repId: v ?? null }),
-                    );
-                  }}
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Filters"
-            subtitle="Keep the existing period and date logic unchanged."
-          >
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
-                <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                  Period
-                </div>
-                <select
-                  className="mt-2 h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-800 outline-none transition focus:ring-2 focus:ring-violet-200"
-                  value={filters.period}
-                  onChange={(e) =>
-                    onPeriodChange(e.target.value as DrilldownPeriod)
-                  }
-                >
-                  <option value="THIS_MONTH">This Month</option>
-                  <option value="LAST_MONTH">Last Month</option>
-                  <option value="CUSTOM">Custom</option>
-                </select>
-              </div>
-
-              {filters.period === "CUSTOM" ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                      Start date
+                      Or enter rep ID
                     </div>
                     <input
-                      type="date"
                       className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:ring-2 focus:ring-violet-200"
-                      value={filters.dateFrom ?? ""}
-                      onChange={(e) => onCustomDateFrom(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                      End date
-                    </div>
-                    <input
-                      type="date"
-                      className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:ring-2 focus:ring-violet-200"
-                      value={filters.dateTo ?? ""}
-                      onChange={(e) => onCustomDateTo(e.target.value)}
+                      type="number"
+                      min={1}
+                      value={repId ?? ""}
+                      placeholder="e.g. 3"
+                      onChange={(e) => {
+                        const v = e.target.value ? Number(e.target.value) : null;
+                        router.replace(
+                          buildUrlWithParams(pathname, sp, { repId: v ?? null }),
+                        );
+                      }}
                     />
                   </div>
                 </div>
-              ) : null}
+              </div>
             </div>
-          </SectionCard>
+
+            <div className="relative z-30 min-w-0 pt-5 xl:pt-0 xl:pl-6">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Filters
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4">
+                <DrilldownFilterBar
+                  value={rawFilters}
+                  onChange={onFilters}
+                  isFetching={detailsQ.isFetching}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-5">

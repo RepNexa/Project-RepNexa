@@ -31,11 +31,50 @@ function toggleId(list: number[] | undefined, id: number): number[] {
   return cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
 }
 
+const PERIOD_OPTIONS: Array<{
+  value: CompanyOverviewPeriod;
+  label: string;
+}> = [
+  { value: "THIS_MONTH", label: "This Month" },
+  { value: "LAST_MONTH", label: "Last Month" },
+  { value: "CUSTOM", label: "Custom" },
+];
+
+const GRADE_OPTIONS: Array<{
+  value: "" | Grade;
+  label: string;
+}> = [
+  { value: "", label: "All" },
+  { value: "A", label: "A" },
+  { value: "B", label: "B" },
+  { value: "C", label: "C" },
+];
+
 const labelClassName =
   "mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500";
 
 const controlClassName =
   "h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 shadow-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100";
+
+const triggerClassName =
+  "flex h-11 w-full items-center justify-between rounded-2xl border border-violet-300/70 bg-white px-4 text-left text-sm font-medium text-zinc-900 shadow-[0_0_0_4px_rgba(139,92,246,0.08)] transition hover:border-violet-400/80 focus:border-violet-500 focus:outline-none focus:ring-4 focus:ring-violet-100";
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={`h-5 w-5 text-violet-700 transition-transform ${open ? "rotate-180" : ""}`}
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.51a.75.75 0 0 1-1.08 0l-4.25-4.51a.75.75 0 0 1 .02-1.06Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
 
 export function FilterBar({
   value,
@@ -48,7 +87,12 @@ export function FilterBar({
   const period = value.period;
 
   const [routesOpen, setRoutesOpen] = useState(false);
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [gradeOpen, setGradeOpen] = useState(false);
+
   const routesRef = useRef<HTMLDivElement | null>(null);
+  const periodRef = useRef<HTMLDivElement | null>(null);
+  const gradeRef = useRef<HTMLDivElement | null>(null);
 
   const selectedRouteLabels = useMemo(() => {
     const selectedIds = value.routeIds ?? [];
@@ -71,16 +115,34 @@ export function FilterBar({
     return `${labels[0]} +${labels.length - 1} more`;
   }, [routes, value.routeIds]);
 
+  const selectedPeriodLabel =
+    PERIOD_OPTIONS.find((opt) => opt.value === period)?.label ?? "This Month";
+
+  const selectedGradeLabel =
+    GRADE_OPTIONS.find((opt) => opt.value === (value.grade ?? ""))?.label ??
+    "All";
+
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
-      if (!routesRef.current) return;
-      if (!routesRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      if (routesRef.current && !routesRef.current.contains(target)) {
         setRoutesOpen(false);
+      }
+      if (periodRef.current && !periodRef.current.contains(target)) {
+        setPeriodOpen(false);
+      }
+      if (gradeRef.current && !gradeRef.current.contains(target)) {
+        setGradeOpen(false);
       }
     }
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setRoutesOpen(false);
+      if (event.key === "Escape") {
+        setRoutesOpen(false);
+        setPeriodOpen(false);
+        setGradeOpen(false);
+      }
     }
 
     document.addEventListener("mousedown", handleOutsideClick);
@@ -99,23 +161,65 @@ export function FilterBar({
       dateFrom: p === "CUSTOM" ? value.dateFrom : undefined,
       dateTo: p === "CUSTOM" ? value.dateTo : undefined,
     });
+    setPeriodOpen(false);
+  };
+
+  const onGrade = (g: "" | Grade) => {
+    onChange({
+      ...value,
+      grade: asGrade(g),
+    });
+    setGradeOpen(false);
   };
 
   return (
     <div className="pb-1">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-end">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div>
+          <div ref={periodRef} className="relative">
             <div className={labelClassName}>Period</div>
-            <select
-              className={controlClassName}
-              value={period}
-              onChange={(e) => onPeriod(e.target.value as CompanyOverviewPeriod)}
+            <button
+              type="button"
+              onClick={() => {
+                setPeriodOpen((prev) => !prev);
+                setGradeOpen(false);
+                setRoutesOpen(false);
+              }}
+              className={triggerClassName}
+              aria-haspopup="listbox"
+              aria-expanded={periodOpen}
             >
-              <option value="THIS_MONTH">This Month</option>
-              <option value="LAST_MONTH">Last Month</option>
-              <option value="CUSTOM">Custom</option>
-            </select>
+              <span className="truncate">{selectedPeriodLabel}</span>
+              <span className="ml-3">
+                <Chevron open={periodOpen} />
+              </span>
+            </button>
+
+            {periodOpen ? (
+              <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-2xl border border-violet-200/80 bg-white p-2 shadow-[0_18px_40px_rgba(24,24,27,0.12),0_8px_20px_rgba(139,92,246,0.12)]">
+                <div role="listbox" aria-label="Period options" className="grid grid-cols-1 gap-1.5">
+                  {PERIOD_OPTIONS.map((opt) => {
+                    const selected = opt.value === period;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => onPeriod(opt.value)}
+                        className={`flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+                          selected
+                            ? "bg-violet-600 text-white"
+                            : "text-zinc-800 hover:bg-violet-50 hover:text-violet-700"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {period === "CUSTOM" ? (
@@ -146,20 +250,50 @@ export function FilterBar({
             </>
           ) : null}
 
-          <div>
+          <div ref={gradeRef} className="relative">
             <div className={labelClassName}>Grade</div>
-            <select
-              className={controlClassName}
-              value={value.grade ?? ""}
-              onChange={(e) =>
-                onChange({ ...value, grade: asGrade(e.target.value) })
-              }
+            <button
+              type="button"
+              onClick={() => {
+                setGradeOpen((prev) => !prev);
+                setPeriodOpen(false);
+                setRoutesOpen(false);
+              }}
+              className={triggerClassName}
+              aria-haspopup="listbox"
+              aria-expanded={gradeOpen}
             >
-              <option value="">All</option>
-              <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="C">C</option>
-            </select>
+              <span className="truncate">{selectedGradeLabel}</span>
+              <span className="ml-3">
+                <Chevron open={gradeOpen} />
+              </span>
+            </button>
+
+            {gradeOpen ? (
+              <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-2xl border border-violet-200/80 bg-white p-2 shadow-[0_18px_40px_rgba(24,24,27,0.12),0_8px_20px_rgba(139,92,246,0.12)]">
+                <div role="listbox" aria-label="Grade options" className="grid grid-cols-1 gap-1.5">
+                  {GRADE_OPTIONS.map((opt) => {
+                    const selected = opt.value === (value.grade ?? "");
+                    return (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => onGrade(opt.value)}
+                        className={`flex w-full items-center rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
+                          selected
+                            ? "bg-violet-600 text-white"
+                            : "text-zinc-800 hover:bg-violet-50 hover:text-violet-700"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {canSelectFieldManager ? (
@@ -190,17 +324,23 @@ export function FilterBar({
           <div className="relative">
             <button
               type="button"
-              onClick={() => setRoutesOpen((prev) => !prev)}
-              className="flex h-11 w-full items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 text-left text-sm font-medium text-zinc-900 shadow-sm transition hover:border-zinc-300 focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-100"
+              onClick={() => {
+                setRoutesOpen((prev) => !prev);
+                setPeriodOpen(false);
+                setGradeOpen(false);
+              }}
+              className={triggerClassName}
               aria-haspopup="listbox"
               aria-expanded={routesOpen}
             >
               <span className="truncate">{selectedRouteLabels}</span>
-              <span className="ml-3 text-zinc-500">{routesOpen ? "▲" : "▼"}</span>
+              <span className="ml-3">
+                <Chevron open={routesOpen} />
+              </span>
             </button>
 
             {routesOpen ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg">
+              <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 rounded-2xl border border-violet-200/80 bg-white p-2 shadow-[0_18px_40px_rgba(24,24,27,0.12),0_8px_20px_rgba(139,92,246,0.12)]">
                 {routesQ.isLoading ? (
                   <div className="px-3 py-2 text-sm text-zinc-600">
                     Loading routes…
@@ -210,7 +350,7 @@ export function FilterBar({
                     No routes available.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-1.5">
+                  <div className="grid max-h-80 grid-cols-1 gap-1.5 overflow-y-auto pr-1">
                     {routes.slice(0, 60).map((r: any, idx: number) => {
                       const id = Number(r.routeId ?? r.id);
                       const checked =
@@ -224,7 +364,9 @@ export function FilterBar({
                       return (
                         <label
                           key={`${label}-${idx}`}
-                          className="flex min-w-0 items-start gap-3 rounded-xl px-3 py-2 transition hover:bg-zinc-50"
+                          className={`flex min-w-0 items-start gap-3 rounded-xl px-3 py-2 transition ${
+                            checked ? "bg-violet-50" : "hover:bg-zinc-50"
+                          }`}
                         >
                           <input
                             className="mt-1 h-4 w-4 rounded border-zinc-300 accent-violet-600"
