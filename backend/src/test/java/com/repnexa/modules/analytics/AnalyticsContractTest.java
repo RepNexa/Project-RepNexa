@@ -1,27 +1,37 @@
 package com.repnexa.modules.analytics;
 
-import com.repnexa.testsupport.HttpSessionClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.repnexa.TestcontainersConfiguration;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
-import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
 class AnalyticsContractTest {
 
-    @LocalServerPort
-    int port;
+    @Autowired MockMvc mvc;
+    @Autowired ObjectMapper om;
 
-    private String apiBase() {
-        return "http://localhost:" + port + "/api/v1";
-    }
-
-    // Adjust these if your seed usernames/passwords differ
     private static final String CM_U = System.getProperty("repnexa.cm.user", "cm@repnexa.local");
     private static final String CM_P = System.getProperty("repnexa.cm.pass", "CM@1234");
 
@@ -33,48 +43,38 @@ class AnalyticsContractTest {
 
     @Test
     void analytics_endpoints_rbac_matrix() throws Exception {
-        String base = apiBase();
+        // anon: must be 401 AUTH_REQUIRED
+        MvcResult anonRes = mvc.perform(post("/api/v1/analytics/company-overview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"period\":\"THIS_MONTH\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
 
-        // anon: must be 401 AUTH_REQUIRED (your CSRF ordering fix)
-        HttpSessionClient anon = HttpSessionClient.anonymous(base);
-        HttpResponse<String> anonRes = anon.postJsonNoCsrf(
-                "/analytics/company-overview",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(401, anonRes.statusCode(), anonRes.body());
-        assertEquals("AUTH_REQUIRED", anon.jsonObject(anonRes).get("code"));
+        Map<?, ?> anonBody = jsonObject(anonRes);
+        assertEquals("AUTH_REQUIRED", anonBody.get("code"));
 
         // MR: must be 403 RBAC_FORBIDDEN
-        HttpSessionClient mr = HttpSessionClient.login(base, MR_U, MR_P);
-        HttpResponse<String> mrRes = mr.postJson(
-                "/analytics/company-overview",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(403, mrRes.statusCode(), mrRes.body());
-        assertEquals("RBAC_FORBIDDEN", mr.jsonObject(mrRes).get("code"));
+        LoggedIn mr = login(MR_U, MR_P);
+        MvcResult mrRes = postJsonAs(mr, "/api/v1/analytics/company-overview", "{\"period\":\"THIS_MONTH\"}")
+                .andExpect(status().isForbidden())
+                .andReturn();
+
+        Map<?, ?> mrBody = jsonObject(mrRes);
+        assertEquals("RBAC_FORBIDDEN", mrBody.get("code"));
 
         // FM: must be 200
-        HttpSessionClient fm = HttpSessionClient.login(base, FM_U, FM_P);
-        HttpResponse<String> fmRes = fm.postJson(
-                "/analytics/company-overview",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(200, fmRes.statusCode(), fmRes.body());
+        LoggedIn fm = login(FM_U, FM_P);
+        MvcResult fmRes = postJsonAs(fm, "/api/v1/analytics/company-overview", "{\"period\":\"THIS_MONTH\"}")
+                .andExpect(status().isOk())
+                .andReturn();
 
         // CM: must be 200
-        HttpSessionClient cm = HttpSessionClient.login(base, CM_U, CM_P);
-        HttpResponse<String> cmRes = cm.postJson(
-                "/analytics/company-overview",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(200, cmRes.statusCode(), cmRes.body());
+        LoggedIn cm = login(CM_U, CM_P);
+        MvcResult cmRes = postJsonAs(cm, "/api/v1/analytics/company-overview", "{\"period\":\"THIS_MONTH\"}")
+                .andExpect(status().isOk())
+                .andReturn();
 
-        // Basic response-shape checks (don’t depend on seeded data)
-        Map<?, ?> body = cm.jsonObject(cmRes);
+        Map<?, ?> body = jsonObject(cmRes);
         assertNotNull(body.get("periodUsed"));
         assertNotNull(body.get("scope"));
 
@@ -85,50 +85,114 @@ class AnalyticsContractTest {
 
     @Test
     void drilldown_endpoints_exist_and_return_json() throws Exception {
-        String base = apiBase();
-        HttpSessionClient cm = HttpSessionClient.login(base, CM_U, CM_P);
+        LoggedIn cm = login(CM_U, CM_P);
 
-        // doctor-details (POST)
-        HttpResponse<String> dd = cm.postJson(
-                "/analytics/doctor-details",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(200, dd.statusCode(), dd.body());
-        Map<?, ?> ddBody = cm.jsonObject(dd);
-        assertNotNull(ddBody.get("rows"));
-        assertNotNull(ddBody.get("flags"));
+        MvcResult overviewRes = postJsonAs(cm, "/api/v1/analytics/company-overview", "{\"period\":\"THIS_MONTH\"}")
+                .andExpect(status().isOk())
+                .andReturn();
 
-        // rep-details (POST)
-        HttpResponse<String> rd = cm.postJson(
-                "/analytics/rep-details",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(200, rd.statusCode(), rd.body());
-        Map<?, ?> rdBody = cm.jsonObject(rd);
-        assertNotNull(rdBody.get("rows"));
-        assertNotNull(rdBody.get("flags"));
+        Map<?, ?> overviewBody = jsonObject(overviewRes);
+        Object scopeObj = overviewBody.get("scope");
+        boolean hasEffectiveRoutes = false;
+        if (scopeObj instanceof Map<?, ?> scopeMap) {
+            Object routeIdsObj = scopeMap.get("effectiveRouteIds");
+            hasEffectiveRoutes = routeIdsObj instanceof List && !((List<?>) routeIdsObj).isEmpty();
+        }
 
-        // product-details is currently a placeholder (still must be 200)
-        HttpResponse<String> pd = cm.postJson(
-                "/analytics/product-details",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(200, pd.statusCode(), pd.body());
+        if (hasEffectiveRoutes) {
+            MvcResult dd = postJsonAs(cm, "/api/v1/analytics/doctor-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isOk())
+                    .andReturn();
+            Map<?, ?> ddBody = jsonObject(dd);
+            assertNotNull(ddBody.get("rows"));
+            assertNotNull(ddBody.get("flags"));
 
-        // chemist-details is currently a placeholder (still must be 200)
-        HttpResponse<String> cd = cm.postJson(
-                "/analytics/chemist-details",
-                "{\"period\":\"THIS_MONTH\"}",
-                Map.of()
-        );
-        assertEquals(200, cd.statusCode(), cd.body());
+            MvcResult rd = postJsonAs(cm, "/api/v1/analytics/rep-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isOk())
+                    .andReturn();
+            Map<?, ?> rdBody = jsonObject(rd);
+            assertNotNull(rdBody.get("rows"));
+            assertNotNull(rdBody.get("flags"));
 
-        // visit-log unknown doctor id should be 404 DOCTOR_NOT_FOUND
-        HttpResponse<String> vl = cm.get("/analytics/doctors/999999/visit-log");
-        assertEquals(404, vl.statusCode(), vl.body());
-        assertEquals("DOCTOR_NOT_FOUND", cm.jsonObject(vl).get("code"));
+            postJsonAs(cm, "/api/v1/analytics/product-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isOk());
+
+            postJsonAs(cm, "/api/v1/analytics/chemist-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isOk());
+        } else {
+            MvcResult dd = postJsonAs(cm, "/api/v1/analytics/doctor-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isForbidden())
+                    .andReturn();
+            assertApiCode(dd, "SCOPE_FORBIDDEN");
+
+            MvcResult rd = postJsonAs(cm, "/api/v1/analytics/rep-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isForbidden())
+                    .andReturn();
+            assertApiCode(rd, "SCOPE_FORBIDDEN");
+
+            MvcResult pd = postJsonAs(cm, "/api/v1/analytics/product-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isForbidden())
+                    .andReturn();
+            assertApiCode(pd, "SCOPE_FORBIDDEN");
+
+            MvcResult cd = postJsonAs(cm, "/api/v1/analytics/chemist-details", "{\"period\":\"THIS_MONTH\"}")
+                    .andExpect(status().isForbidden())
+                    .andReturn();
+            assertApiCode(cd, "SCOPE_FORBIDDEN");
+        }
+
+        MvcResult vl = mvc.perform(get("/api/v1/analytics/doctors/999999/visit-log")
+                        .session(cm.session))
+                .andExpect(status().isNotFound())
+                .andReturn();
+
+        Map<?, ?> vlBody = jsonObject(vl);
+        assertEquals("DOCTOR_NOT_FOUND", vlBody.get("code"));
     }
+
+    private void assertApiCode(MvcResult res, String expectedCode) throws Exception {
+        Map<?, ?> body = jsonObject(res);
+        assertEquals(expectedCode, body.get("code"));
+    }
+
+    private LoggedIn login(String username, String password) throws Exception {
+        MvcResult csrfRes = mvc.perform(get("/api/v1/auth/csrf"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode csrfJson = om.readTree(csrfRes.getResponse().getContentAsString());
+        String token = csrfJson.get("token").asText();
+
+        Cookie xsrf = csrfRes.getResponse().getCookie("XSRF-TOKEN");
+        if (xsrf == null) xsrf = new Cookie("XSRF-TOKEN", token);
+
+        MockHttpSession session = (MockHttpSession) csrfRes.getRequest().getSession();
+
+        mvc.perform(post("/api/v1/auth/login")
+                        .session(session)
+                        .cookie(xsrf)
+                        .header("X-CSRF-Token", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk());
+
+        return new LoggedIn(session, xsrf, token);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions postJsonAs(
+            LoggedIn user, String path, String json
+    ) throws Exception {
+        return mvc.perform(post(path)
+                .session(user.session)
+                .cookie(user.xsrfCookie)
+                .header("X-CSRF-Token", user.csrfToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json));
+    }
+
+    private Map<?, ?> jsonObject(MvcResult res) throws Exception {
+        return om.readValue(res.getResponse().getContentAsString(), Map.class);
+    }
+
+    private record LoggedIn(MockHttpSession session, Cookie xsrfCookie, String csrfToken) {}
 }
